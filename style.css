@@ -99,7 +99,80 @@ html, body {
   color: var(--text-secondary);
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  margin-bottom: 3rem;
+  margin-bottom: 1.5rem;
+}
+
+.github-badge {
+  display: inline-flex;
+  margin-bottom: 2rem;
+  text-decoration: none;
+  perspective: 600px;
+}
+
+.github-badge-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 0.5rem 0.75rem;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  color: rgba(255,255,255,0.85);
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  transform: rotateX(0) rotateY(0);
+  transform-style: preserve-3d;
+  box-shadow:
+    0 4px 16px rgba(0,0,0,0.3),
+    0 0 0 1px rgba(255,255,255,0.05) inset,
+    0 1px 0 rgba(255,255,255,0.1) inset;
+}
+
+.github-badge:hover .github-badge-inner {
+  background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06));
+  border-color: rgba(255,255,255,0.2);
+  transform: rotateX(-5deg) rotateY(5deg) translateY(-2px);
+  box-shadow:
+    0 8px 30px rgba(0,0,0,0.4),
+    0 0 0 1px rgba(255,255,255,0.08) inset,
+    0 1px 0 rgba(255,255,255,0.15) inset,
+    0 0 20px rgba(50,108,229,0.15);
+  color: white;
+}
+
+.github-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+}
+
+.github-text {
+  letter-spacing: 0.01em;
+}
+
+.github-stars {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #e3b341;
+  margin-left: 0.25rem;
+}
+
+.github-star-icon {
+  width: 12px;
+  height: 12px;
+  color: #e3b341;
+}
+
+.github-badge:hover .github-stars {
+  background: rgba(227,179,65,0.15);
 }
 
 .menu-grid {
