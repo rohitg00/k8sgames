@@ -33,7 +33,7 @@ const XP_LEVELS = [
   { level: 30, title: 'CKA Master', xpRequired: 100000 }
 ];
 
-const STORAGE_KEY = 'kubeops_progress';
+const STORAGE_KEY = 'k8sgames_progress';
 
 class ScoringEngine {
   constructor(gameEngine) {

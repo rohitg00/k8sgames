@@ -4,7 +4,7 @@ const CAMPAIGN_LEVELS = [
     title: 'Hello, Cluster',
     chapter: 1,
     chapterName: 'Foundations',
-    description: 'Welcome to KubeOps! Deploy your first Pod and learn the basics of Kubernetes resource management.',
+    description: 'Welcome to K8s Games! Deploy your first Pod and learn the basics of Kubernetes resource management.',
     objectives: [
       { type: 'deploy', kind: 'Pod', count: 1, label: 'Deploy a Pod' },
       { type: 'deploy', kind: 'Namespace', count: 1, label: 'Create a namespace' }

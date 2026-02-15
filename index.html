@@ -3,8 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>KubeOps - Kubernetes Cluster Management Simulation</title>
+  <title>K8s Games - Kubernetes Cluster Management Simulation</title>
   <meta name="description" content="Learn Kubernetes through interactive gameplay. Deploy pods, handle incidents, master kubectl commands.">
+  <meta property="og:title" content="K8s Games - Learn Kubernetes by Playing">
+  <meta property="og:description" content="Deploy pods, fix CrashLoopBackOff, type real kubectl commands — all in a 3D simulation that runs in your browser. No install needed.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://k8sgames.com">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="K8s Games - Learn Kubernetes by Playing">
+  <meta name="twitter:description" content="Deploy pods, fix CrashLoopBackOff, type real kubectl commands — all in a 3D simulation that runs in your browser.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%23326CE5'/><text x='16' y='21' text-anchor='middle' fill='white' font-size='14' font-weight='bold'>K</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,7 +51,7 @@
   <canvas id="game-canvas"></canvas>
 
   <div id="main-menu">
-    <div class="menu-logo">KubeOps</div>
+    <div class="menu-logo">K8s Games</div>
     <div class="menu-subtitle">Kubernetes Cluster Simulation</div>
 
     <div class="menu-grid">
@@ -99,6 +106,11 @@
       <button id="btn-export-yaml" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all" title="Export cluster as YAML">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
         YAML
+      </button>
+      <div class="w-px h-5 bg-white/10"></div>
+      <button id="btn-help" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/80 hover:text-white bg-white/5 hover:bg-amber-500/20 border border-white/10 hover:border-amber-400/40 rounded-lg transition-all" title="How to play (?)">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01"/><circle cx="12" cy="12" r="10" stroke-width="2"/></svg>
+        Help
       </button>
     </div>
     <div id="resource-palette" class="glass-dark">
@@ -404,7 +416,7 @@
       };
     }
 
-    class KubeOpsApp {
+    class K8sGamesApp {
       constructor() {
         this.engine = null;
         this.renderer = null;
@@ -428,18 +440,18 @@
 
       async init() {
         try {
-        console.log('[KubeOps] Creating GameEngine...');
+        console.log('[K8sGames] Creating GameEngine...');
         this.engine = new GameEngine({ mode: 'sandbox' });
-        console.log('[KubeOps] GameEngine created');
+        console.log('[K8sGames] GameEngine created');
 
         const canvas = document.getElementById('game-canvas');
-        console.log('[KubeOps] Canvas:', canvas, canvas?.clientWidth, canvas?.clientHeight);
+        console.log('[K8sGames] Canvas:', canvas, canvas?.clientWidth, canvas?.clientHeight);
         this.renderer = new ClusterRenderer(canvas);
-        console.log('[KubeOps] ClusterRenderer created');
+        console.log('[K8sGames] ClusterRenderer created');
 
         this.incidentEngine = new IncidentEngine(this.engine);
         this.scoringEngine = new ScoringEngine(this.engine);
-        console.log('[KubeOps] Engines created');
+        console.log('[K8sGames] Engines created');
 
         window.game = {
           engine: this.engine.eventBus,
@@ -458,7 +470,7 @@
         this.metrics = new MetricsDashboard();
         this.incidentPanel = new IncidentPanel();
         this.minimap = new Minimap();
-        console.log('[KubeOps] UI components created');
+        console.log('[K8sGames] UI components created');
 
         this.bindMenuEvents();
         this.bindGameEvents();
@@ -467,7 +479,7 @@
         this.buildLevelSelect();
         this.buildChallengeSelect();
         this.buildAchievements();
-        console.log('[KubeOps] Init complete - menu ready');
+        console.log('[K8sGames] Init complete - menu ready');
 
         this.engine.onUpdate((dt) => {
           this.incidentEngine.tick(dt);
@@ -511,14 +523,14 @@
           this.placedPositions.set(uid, pos);
         };
         } catch (err) {
-          console.error('[KubeOps] Init error:', err);
+          console.error('[K8sGames] Init error:', err);
           throw err;
         }
       }
 
       loadSettings() {
         try {
-          return JSON.parse(localStorage.getItem('kubeops_settings')) || {
+          return JSON.parse(localStorage.getItem('k8sgames_settings')) || {
             sound: true, particles: true, shadows: true, grid: true, difficulty: 'normal'
           };
         } catch {
@@ -527,7 +539,7 @@
       }
 
       saveSettings() {
-        localStorage.setItem('kubeops_settings', JSON.stringify(this.settings));
+        localStorage.setItem('k8sgames_settings', JSON.stringify(this.settings));
       }
 
       bindMenuEvents() {
@@ -680,6 +692,11 @@
                 this.engine.cluster.remove(uid);
               }
               break;
+            case '?':
+            case 'h':
+            case 'H':
+              this.showTutorial(this.currentMode || 'sandbox');
+              break;
             case '1': this.selectPaletteResource('Pod'); break;
             case '2': this.selectPaletteResource('Deployment'); break;
             case '3': this.selectPaletteResource('ReplicaSet'); break;
@@ -794,6 +811,10 @@
           if (this.renderer) this.renderer.resetCamera();
         });
 
+        document.getElementById('btn-help')?.addEventListener('click', () => {
+          this.showTutorial(this.currentMode || 'sandbox');
+        });
+
         document.getElementById('btn-export-yaml')?.addEventListener('click', () => {
           if (this.modeInstance && typeof this.modeInstance.exportClusterYAML === 'function') {
             this.modeInstance.exportClusterYAML();
@@ -805,7 +826,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'kubeops-cluster.yaml';
+            a.download = 'k8sgames-cluster.yaml';
             a.click();
             URL.revokeObjectURL(url);
           }
@@ -949,9 +970,7 @@
 
         this.applySettings();
 
-        if (!localStorage.getItem('kubeops_skip_tutorial')) {
-            this.showTutorial(mode);
-        }
+        this.showTutorial(mode);
 
         this.renderer.start();
         this.engine.start();
@@ -1029,46 +1048,61 @@
         const existing = document.getElementById('tutorial-overlay');
         if (existing) existing.remove();
 
-        const tips = {
+        const modeNames = { sandbox: 'Sandbox Mode', chaos: 'Chaos Mode', campaign: 'Campaign', challenge: 'Challenge' };
+
+        const modeGoals = {
+            sandbox: 'Build any cluster you want. The Architecture Advisor scores your design 0-100 across HA, security, scalability, and cost.',
+            chaos: 'Survive as long as possible. Incidents escalate over time. If cluster health hits zero, game over. Fix issues fast for combo XP.',
+            campaign: 'Complete objectives to pass each level. Faster completion with fewer resources earns more stars (3 max).',
+            challenge: 'Beat the clock. Deploy and configure the required resources before time runs out.',
+        };
+
+        const controls = [
+            { key: 'Click palette', desc: 'Place a resource in your cluster' },
+            { key: 'Drag resource', desc: 'Move it anywhere in the 3D space' },
+            { key: 'Click resource', desc: 'Inspect it (status, YAML, describe)' },
+            { key: 'Right-click', desc: 'Scale, delete, logs, restart, rollback' },
+            { key: '/', desc: 'kubectl command bar (get, describe, scale, logs...)' },
+            { key: 'Space', desc: 'Pause / resume simulation' },
+            { key: 'M', desc: 'Toggle live metrics dashboard' },
+            { key: '1-9', desc: 'Quick-select resource from palette' },
+            { key: 'Scroll', desc: 'Zoom in/out' },
+            { key: 'Left-drag', desc: 'Rotate camera' },
+            { key: 'Right-drag', desc: 'Pan camera' },
+            { key: 'Esc', desc: 'Return to main menu' },
+        ];
+
+        const modeRules = {
             sandbox: [
-                { key: 'Click', desc: 'Click resources in the left palette to place them in your cluster' },
-                { key: 'Right-click', desc: 'Right-click any resource for options (scale, delete, inspect)' },
-                { key: '/', desc: 'Open the kubectl command bar to type real commands' },
-                { key: 'Drag', desc: 'Drag resources from the palette onto the canvas' },
-                { key: 'Navigate', desc: 'Left-drag to rotate, right-drag to pan, scroll to zoom' },
-                { key: 'Esc', desc: 'Return to main menu' },
+                'Place any of the 17 resource types from the left palette',
+                'Use Auto-Align to organize into K8s architecture layout',
+                'Click YAML to export your cluster as a manifest file',
+                'Architecture Advisor scores: HA, security, networking, storage, scaling, RBAC, resource limits, probes, config management, cost',
             ],
             chaos: [
-                { key: 'Survive', desc: 'Keep your cluster healthy as incidents escalate' },
-                { key: '/', desc: 'Use kubectl commands to diagnose and fix issues' },
-                { key: 'Alerts', desc: 'Click the bell icon to see active incidents' },
-                { key: 'Resolve', desc: 'Fix incidents quickly for combo bonuses and XP' },
-                { key: 'Health', desc: 'If cluster health hits 0, game over' },
-                { key: 'Esc', desc: 'Return to main menu' },
+                'You start with a running cluster — keep it alive',
+                'Incidents appear as red alerts in the top bar',
+                'Click the bell icon to see active incidents',
+                'Use kubectl describe and logs to diagnose issues',
+                'Resolve incidents by applying the correct fix',
+                'Speed increases over time — incidents come faster',
             ],
             campaign: [
-                { key: 'Objectives', desc: 'Complete all objectives to pass each level' },
-                { key: 'Deploy', desc: 'Place the required Kubernetes resources' },
-                { key: '/', desc: 'Use kubectl commands for advanced operations' },
-                { key: 'Stars', desc: 'Complete faster with fewer hints for more stars' },
-                { key: 'Esc', desc: 'Return to main menu' },
+                'Ch 1 (L1-4): Pods, namespaces, nodes, multi-container pods',
+                'Ch 2 (L5-8): Deployments, rolling updates, StatefulSets, Jobs',
+                'Ch 3 (L9-12): Services, Ingress, NetworkPolicies, traffic',
+                'Ch 4 (L13-16): ConfigMaps, Secrets, PVCs, probes',
+                'Ch 5 (L17-20): HPA, ResourceQuotas, RBAC, production setup',
             ],
             challenge: [
-                { key: 'Timer', desc: 'Complete objectives before time runs out' },
-                { key: 'Deploy', desc: 'Place and configure the required resources' },
-                { key: '/', desc: 'Use kubectl commands for speed' },
-                { key: 'Esc', desc: 'Return to main menu' },
+                '10 timed scenarios with specific objectives',
+                'Deploy microservices, fix outages, configure networking',
+                'Use kubectl commands for faster operations',
+                'Score based on completion time and accuracy',
             ],
         };
 
-        const modeTips = tips[mode] || tips.sandbox;
-        const modeNames = { sandbox: 'Sandbox Mode', chaos: 'Chaos Mode', campaign: 'Campaign', challenge: 'Challenge' };
-        const modeDescs = {
-            sandbox: 'Build and manage your cluster freely. Place resources, experiment with configurations.',
-            chaos: 'Your cluster is under attack. Diagnose and resolve incidents to survive.',
-            campaign: 'Learn Kubernetes concepts step by step through guided levels.',
-            challenge: 'Race against the clock to complete Kubernetes tasks.',
-        };
+        const rules = modeRules[mode] || modeRules.sandbox;
 
         const overlay = document.createElement('div');
         overlay.id = 'tutorial-overlay';
@@ -1076,30 +1110,45 @@
             <div class="tutorial-card">
                 <div class="tutorial-header">
                     <div class="tutorial-mode">${modeNames[mode] || mode}</div>
-                    <div class="tutorial-desc">${modeDescs[mode] || ''}</div>
+                    <div class="tutorial-desc">${modeGoals[mode] || ''}</div>
                 </div>
+
+                <div class="tutorial-section-label">How to Play</div>
                 <div class="tutorial-tips">
-                    ${modeTips.map(t => `
+                    ${rules.map(r => `
+                        <div class="tutorial-tip">
+                            <span class="tutorial-bullet"></span>
+                            <span class="tutorial-text">${r}</span>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <div class="tutorial-section-label">Controls</div>
+                <div class="tutorial-tips">
+                    ${controls.map(t => `
                         <div class="tutorial-tip">
                             <span class="tutorial-key">${t.key}</span>
                             <span class="tutorial-text">${t.desc}</span>
                         </div>
                     `).join('')}
                 </div>
-                <button id="tutorial-start" class="tutorial-btn">Start Playing</button>
-                <label class="tutorial-skip-label">
-                    <input type="checkbox" id="tutorial-skip-check"> Don't show again
-                </label>
+
+                <button id="tutorial-start" class="tutorial-btn">Got it, let's go</button>
+                <div class="tutorial-hint">Press <span class="tutorial-hint-key">?</span> anytime to reopen this</div>
             </div>
         `;
         document.body.appendChild(overlay);
 
         document.getElementById('tutorial-start').addEventListener('click', () => {
-            if (document.getElementById('tutorial-skip-check').checked) {
-                localStorage.setItem('kubeops_skip_tutorial', 'true');
-            }
             overlay.classList.add('fade-out');
             setTimeout(() => overlay.remove(), 400);
+        });
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.classList.add('fade-out');
+                setTimeout(() => overlay.remove(), 400);
+            }
         });
       }
 
@@ -1248,8 +1297,8 @@
       }
     }
 
-    const app = new KubeOpsApp();
-    app.init().catch(err => console.error('KubeOps init error:', err));
+    const app = new K8sGamesApp();
+    app.init().catch(err => console.error('K8sGames init error:', err));
   </script>
 </body>
 </html>

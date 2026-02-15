@@ -1,18 +1,21 @@
-# KubeOps
+# K8s Games
 
 Learn Kubernetes by playing. Deploy pods, fix CrashLoopBackOff, type real kubectl commands — all in a 3D sim that runs in your browser.
 
-**[Play Now](https://rohitg00.github.io/kubeops)**
+**[Play Now](https://k8sgames.com)**
 
 ## Get Started
 
-```bash
-git clone https://github.com/rohitg00/kubeops.git
-cd kubeops
-python3 -m http.server 8080
-```
+Visit **[k8sgames.com](https://k8sgames.com)** and pick a mode. No install, no signup, no build step.
 
-Open http://localhost:8080 and pick a mode. No install, no build, no dependencies.
+Or run locally:
+
+```bash
+git clone https://github.com/rohitg00/k8sgames.git
+cd k8sgames
+python3 -m http.server 8080
+# Open http://localhost:8080
+```
 
 ## How to Play
 
@@ -23,6 +26,7 @@ Open http://localhost:8080 and pick a mode. No install, no build, no dependencie
 5. Right-click for actions (Scale, Delete, Logs, Restart)
 6. Press `/` to open the kubectl command bar
 7. Handle incidents as they appear — diagnose and fix like a real SRE
+8. Press `?` anytime for help
 
 ## Game Modes
 
@@ -38,6 +42,7 @@ Open http://localhost:8080 and pick a mode. No install, no build, no dependencie
 | Input | Action |
 |-------|--------|
 | `/` | kubectl command bar |
+| `?` | Help / How to play |
 | `Space` | Pause / Resume |
 | `M` | Metrics dashboard |
 | `Esc` | Back to menu |
@@ -48,7 +53,7 @@ Open http://localhost:8080 and pick a mode. No install, no build, no dependencie
 | Right-drag | Pan |
 | Scroll | Zoom |
 
-Bottom toolbar: **Auto-Align** (K8s architecture layout) | **Reset View** | **YAML** (export cluster)
+Bottom toolbar: **Auto-Align** (K8s architecture layout) | **Reset View** | **YAML** (export cluster) | **Help**
 
 ## What's In It
 

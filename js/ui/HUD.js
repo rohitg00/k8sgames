@@ -34,7 +34,7 @@ export class HUD {
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-2">
             <div id="hud-health" class="w-3 h-3 rounded-full bg-green-400 shadow-lg shadow-green-400/50 transition-colors duration-500"></div>
-            <span class="text-white/90 text-sm font-semibold tracking-wide">KubeOps</span>
+            <span class="text-white/90 text-sm font-semibold tracking-wide">K8s Games</span>
           </div>
           <div class="h-5 w-px bg-white/10"></div>
           <div class="flex items-center gap-3 text-xs text-white/60">
@@ -285,19 +285,22 @@ export class HUD {
 
   _togglePause() {
     this.paused = !this.paused;
-    const engine = window.game?.engine;
+    const ge = window.game?.gameEngine;
     if (this.paused) {
-      engine?.pause();
+      ge?.pause();
       this.elements['hud-pause-icon'].innerHTML = '&#9654;';
     } else {
-      engine?.resume();
+      ge?.resume();
       this.elements['hud-pause-icon'].innerHTML = '&#9646;&#9646;';
     }
   }
 
   _setSpeed(multiplier) {
     this.speed = multiplier;
-    window.game?.engine.emit('speed:change', { speed: multiplier });
+    const ge = window.game?.gameEngine;
+    if (ge?.setTimeScale) {
+      ge.setTimeScale(multiplier);
+    }
     const buttons = { 1: 'hud-speed-1', 2: 'hud-speed-2', 4: 'hud-speed-4' };
     for (const [spd, id] of Object.entries(buttons)) {
       const el = this.elements[id];

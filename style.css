@@ -798,8 +798,10 @@ html, body {
 }
 
 .tutorial-card {
-  max-width: 480px;
+  max-width: 520px;
   width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
   background: linear-gradient(135deg, rgba(22, 27, 34, 0.98), rgba(13, 17, 23, 0.98));
   border: 1px solid rgba(50, 108, 229, 0.3);
   border-radius: 16px;
@@ -887,19 +889,43 @@ html, body {
   box-shadow: 0 4px 20px rgba(50, 108, 229, 0.4);
 }
 
-.tutorial-skip-label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
+.tutorial-section-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.35);
+  margin-bottom: 0.5rem;
+  margin-top: 0.25rem;
+  padding-left: 0.25rem;
+}
+
+.tutorial-bullet {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  min-width: 5px;
+  border-radius: 50%;
+  background: #326CE5;
+  margin-left: 2px;
+}
+
+.tutorial-hint {
+  text-align: center;
   margin-top: 0.75rem;
   font-size: 0.7rem;
   color: rgba(255, 255, 255, 0.3);
-  cursor: pointer;
 }
 
-.tutorial-skip-label input {
-  accent-color: #326CE5;
+.tutorial-hint-key {
+  display: inline-block;
+  padding: 0 0.4rem;
+  background: rgba(50, 108, 229, 0.15);
+  border: 1px solid rgba(50, 108, 229, 0.3);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: #58a6ff;
 }
 
 @keyframes fadeIn {
