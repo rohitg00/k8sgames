@@ -720,6 +720,10 @@
             this.commandBar._executeCommand(data.command);
           }
         });
+
+        this.engine.eventBus.on('ui:edit-resource', (data) => {
+          this._showEditDialog(data.uid);
+        });
       }
 
       bindKeyboard() {
@@ -897,6 +901,18 @@
         this._showNamePrompt(kind, (chosenName) => {
           const resource = new ResourceClass({ name: chosenName, namespace: 'default' });
 
+          if (kind === 'Deployment' || kind === 'StatefulSet' || kind === 'DaemonSet') {
+            resource.setLabel('app', chosenName);
+            if (resource.spec) {
+              resource.spec.selector = resource.spec.selector || {};
+              resource.spec.selector.matchLabels = resource.spec.selector.matchLabels || {};
+              resource.spec.selector.matchLabels.app = chosenName;
+              resource.spec.template = resource.spec.template || {};
+              resource.spec.template.metadata = resource.spec.template.metadata || {};
+              resource.spec.template.metadata.labels = { app: chosenName };
+            }
+          }
+
           let pos = null;
           if (screenX !== undefined && screenY !== undefined && this.renderer) {
             pos = this.renderer.screenToGround(screenX, screenY);
@@ -907,6 +923,63 @@
 
           this.placedPositions.set(resource.uid, pos);
           this.engine.cluster.add(resource);
+
+          if (kind === 'Service') {
+            this._showSelectorPicker(resource);
+          }
+        });
+      }
+
+      _showSelectorPicker(service) {
+        const deployments = this.engine.cluster.getByKind('Deployment');
+        const statefulsets = this.engine.cluster.getByKind('StatefulSet');
+        const targets = [...deployments, ...statefulsets];
+        if (targets.length === 0) return;
+
+        const existingOverlay = document.getElementById('selector-picker-overlay');
+        if (existingOverlay) existingOverlay.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'selector-picker-overlay';
+        overlay.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm';
+
+        const buttons = targets.map(t => {
+          const appLabel = t.metadata?.labels?.app || t.metadata?.name;
+          return `<button class="selector-pick-btn w-full text-left px-3 py-2 text-sm rounded-lg bg-white/5 hover:bg-sky-500/15 border border-white/10 hover:border-sky-500/30 text-white/80 transition-all flex items-center gap-2" data-selector="app=${appLabel}">
+            <span class="w-2 h-2 rounded-full bg-blue-400 shrink-0"></span>
+            <span class="font-mono text-xs">${t.kind}: ${t.metadata?.name}</span>
+            <span class="text-white/30 text-xs ml-auto">app=${appLabel}</span>
+          </button>`;
+        }).join('');
+
+        overlay.innerHTML = `
+          <div class="w-72 rounded-xl bg-gray-900/95 border border-white/10 shadow-2xl p-4">
+            <div class="text-xs text-white/40 font-medium uppercase tracking-wider mb-1">Connect Service to:</div>
+            <div class="text-[10px] text-white/30 mb-3">Select a workload to route traffic to</div>
+            <div class="space-y-1.5 max-h-48 overflow-y-auto">${buttons}</div>
+            <div class="flex gap-2 mt-3">
+              <button id="selector-pick-skip" class="flex-1 px-3 py-1.5 text-xs font-medium text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors">Skip (configure later)</button>
+            </div>
+            <div class="text-[10px] text-white/30 mt-2 text-center">Tip: You can edit the selector later via the Edit button</div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+
+        const close = () => overlay.remove();
+        document.getElementById('selector-pick-skip').addEventListener('click', close);
+
+        overlay.querySelectorAll('.selector-pick-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const sel = {};
+            for (const part of btn.dataset.selector.split(',')) {
+              const trimmed = part.trim();
+              const eqIdx = trimmed.indexOf('=');
+              if (eqIdx > 0) sel[trimmed.substring(0, eqIdx)] = trimmed.substring(eqIdx + 1);
+            }
+            service.spec.selector = sel;
+            service.recordEvent('Normal', 'SelectorSet', `Selector set to ${btn.dataset.selector}`);
+            close();
+          });
         });
       }
 
@@ -983,6 +1056,128 @@
           }
         }
         return [...new Set(suggestions)];
+      }
+
+      _showEditDialog(uid) {
+        const resource = this.engine.cluster.getResource(uid);
+        if (!resource) return;
+
+        const kind = resource.kind;
+        const name = resource.metadata?.name || 'unnamed';
+        const labels = resource.metadata?.labels || {};
+        const existingOverlay = document.getElementById('edit-dialog-overlay');
+        if (existingOverlay) existingOverlay.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'edit-dialog-overlay';
+        overlay.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm';
+
+        let extraFields = '';
+        if (kind === 'Deployment' || kind === 'StatefulSet' || kind === 'ReplicaSet') {
+          extraFields += `
+            <div class="mt-3">
+              <div class="text-[10px] text-white/40 uppercase tracking-wider mb-1">Replicas</div>
+              <input id="edit-replicas" type="number" min="0" max="20" value="${resource.spec?.replicas ?? 1}" class="w-full px-3 py-1.5 text-sm text-white bg-black/40 border border-white/15 rounded-lg outline-none focus:border-sky-500/50 font-mono" />
+            </div>`;
+        }
+        if (kind === 'Service') {
+          const selectorStr = Object.entries(resource.spec?.selector || {}).map(([k,v]) => `${k}=${v}`).join(', ');
+          const deployments = this.engine.cluster.getByKind('Deployment');
+          const targetOptions = deployments.map(d => {
+            const dLabels = Object.entries(d.metadata?.labels || {}).filter(([k]) => k === 'app').map(([k,v]) => `${k}=${v}`).join(',');
+            return `<button class="edit-target-btn px-2 py-1 text-xs rounded-md bg-blue-500/10 text-blue-400/80 hover:bg-blue-500/20 border border-blue-500/15 transition-all" data-target="app=${d.metadata?.name}">${d.metadata?.name} (app=${d.metadata?.name})</button>`;
+          }).join('');
+          extraFields += `
+            <div class="mt-3">
+              <div class="text-[10px] text-white/40 uppercase tracking-wider mb-1">Selector (connects to pods with these labels)</div>
+              <input id="edit-selector" type="text" value="${selectorStr}" placeholder="app=frontend" class="w-full px-3 py-1.5 text-sm text-white bg-black/40 border border-white/15 rounded-lg outline-none focus:border-sky-500/50 font-mono" />
+              ${deployments.length > 0 ? `<div class="text-[10px] text-white/30 mt-1.5 mb-1">Quick-connect to a Deployment:</div><div class="flex flex-wrap gap-1.5">${targetOptions}</div>` : ''}
+            </div>
+            <div class="mt-3">
+              <div class="text-[10px] text-white/40 uppercase tracking-wider mb-1">Service Type</div>
+              <select id="edit-svc-type" class="w-full px-3 py-1.5 text-sm text-white bg-black/40 border border-white/15 rounded-lg outline-none focus:border-sky-500/50">
+                <option value="ClusterIP" ${resource.spec?.type === 'ClusterIP' ? 'selected' : ''}>ClusterIP</option>
+                <option value="NodePort" ${resource.spec?.type === 'NodePort' ? 'selected' : ''}>NodePort</option>
+                <option value="LoadBalancer" ${resource.spec?.type === 'LoadBalancer' ? 'selected' : ''}>LoadBalancer</option>
+              </select>
+            </div>`;
+        }
+
+        const labelEntries = Object.entries(labels).filter(([k]) => !k.startsWith('kubernetes.io'));
+        const labelsStr = labelEntries.map(([k,v]) => `${k}=${v}`).join('\n');
+
+        overlay.innerHTML = `
+          <div class="w-80 rounded-xl bg-gray-900/95 border border-white/10 shadow-2xl p-4 max-h-[80vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-sm text-white/80 font-semibold">Edit ${kind}: ${name}</div>
+              <button id="edit-dialog-close" class="text-white/30 hover:text-white/60 text-lg">&times;</button>
+            </div>
+            <div>
+              <div class="text-[10px] text-white/40 uppercase tracking-wider mb-1">Labels (one per line: key=value)</div>
+              <textarea id="edit-labels" rows="3" class="w-full px-3 py-1.5 text-xs text-white bg-black/40 border border-white/15 rounded-lg outline-none focus:border-sky-500/50 font-mono resize-none" placeholder="app=frontend&#10;tier=web">${labelsStr}</textarea>
+            </div>
+            ${extraFields}
+            <div class="flex gap-2 mt-4">
+              <button id="edit-dialog-save" class="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-sky-600 hover:bg-sky-500 rounded-lg transition-colors">Save</button>
+              <button id="edit-dialog-cancel" class="px-3 py-1.5 text-xs font-medium text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors">Cancel</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+
+        const close = () => overlay.remove();
+        document.getElementById('edit-dialog-close').addEventListener('click', close);
+        document.getElementById('edit-dialog-cancel').addEventListener('click', close);
+
+        overlay.querySelectorAll('.edit-target-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const selectorInput = document.getElementById('edit-selector');
+            if (selectorInput) selectorInput.value = btn.dataset.target;
+          });
+        });
+
+        document.getElementById('edit-dialog-save').addEventListener('click', () => {
+          const labelsText = document.getElementById('edit-labels').value;
+          const newLabels = {};
+          for (const line of labelsText.split('\n')) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+            const eqIdx = trimmed.indexOf('=');
+            if (eqIdx > 0) {
+              newLabels[trimmed.substring(0, eqIdx)] = trimmed.substring(eqIdx + 1);
+            }
+          }
+
+          const updates = { metadata: { labels: newLabels } };
+
+          const replicasInput = document.getElementById('edit-replicas');
+          if (replicasInput) {
+            updates.spec = updates.spec || {};
+            updates.spec.replicas = parseInt(replicasInput.value, 10) || 1;
+          }
+
+          const selectorInput = document.getElementById('edit-selector');
+          if (selectorInput) {
+            updates.spec = updates.spec || {};
+            const sel = {};
+            for (const part of selectorInput.value.split(',')) {
+              const trimmed = part.trim();
+              const eqIdx = trimmed.indexOf('=');
+              if (eqIdx > 0) sel[trimmed.substring(0, eqIdx)] = trimmed.substring(eqIdx + 1);
+            }
+            updates.spec.selector = sel;
+          }
+
+          const svcType = document.getElementById('edit-svc-type');
+          if (svcType) {
+            updates.spec = updates.spec || {};
+            updates.spec.type = svcType.value;
+          }
+
+          this.engine.cluster.update(uid, updates);
+          resource.recordEvent('Normal', 'Updated', `Resource updated via editor`);
+          close();
+        });
       }
 
       getPlacementPosition() {
@@ -1276,12 +1471,53 @@
       }
 
       syncRenderState() {
-        for (const [uid, resource] of this.engine.cluster.resources) {
+        const cluster = this.engine.cluster;
+        for (const [uid, resource] of cluster.resources) {
           if (this.renderer.resourceMeshes.has(uid)) {
             const status = resource.status?.phase || resource.phase || 'Pending';
             this.renderer.updateResource({ id: uid, status });
           }
         }
+
+        const connections = new Map();
+
+        for (const [parentUid, childUids] of cluster.relationships) {
+          if (!cluster.resources.has(parentUid)) continue;
+          for (const childUid of childUids) {
+            if (!cluster.resources.has(childUid)) continue;
+            if (!this.renderer.resourceMeshes.has(parentUid) || !this.renderer.resourceMeshes.has(childUid)) continue;
+            const id = `own:${parentUid}:${childUid}`;
+            connections.set(id, { id, sourceId: parentUid, targetId: childUid, type: 'ownership', trafficVolume: 1 });
+          }
+        }
+
+        const services = cluster.getByKind('Service');
+        for (const svc of services) {
+          if (!svc.spec?.selector || Object.keys(svc.spec.selector).length === 0) continue;
+          if (!this.renderer.resourceMeshes.has(svc.uid)) continue;
+          const matchingPods = cluster.selectByLabels('Pod', svc.spec.selector)
+            .filter(p => p.metadata.namespace === svc.metadata.namespace);
+
+          for (const pod of matchingPods) {
+            if (!this.renderer.resourceMeshes.has(pod.uid)) continue;
+            const id = `net:${svc.uid}:${pod.uid}`;
+            connections.set(id, { id, sourceId: svc.uid, targetId: pod.uid, type: 'network', trafficVolume: 2 });
+          }
+
+          const matchingDeploys = cluster.getByKind('Deployment').filter(d => {
+            const dLabels = d.metadata?.labels || {};
+            return Object.entries(svc.spec.selector).every(([k,v]) => dLabels[k] === v) && d.metadata.namespace === svc.metadata.namespace;
+          });
+          for (const dep of matchingDeploys) {
+            if (!this.renderer.resourceMeshes.has(dep.uid)) continue;
+            const id = `net:${svc.uid}:${dep.uid}`;
+            if (!connections.has(id)) {
+              connections.set(id, { id, sourceId: svc.uid, targetId: dep.uid, type: 'network', trafficVolume: 3 });
+            }
+          }
+        }
+
+        this.renderer.connectionLines.sync(connections, this.renderer.resourceMeshes);
       }
 
       applySettings() {

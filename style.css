@@ -1012,181 +1012,271 @@ html, body {
 }
 
 @media (max-width: 768px) {
-  #inspector-panel {
-    width: 85vw !important;
-    max-width: 350px !important;
-  }
-  #incident-panel {
-    width: 75vw !important;
-    max-width: 300px !important;
-    left: 0 !important;
-  }
-  #minimap-container {
-    width: 100px !important;
-    height: 100px !important;
-    bottom: 52px !important;
-    right: 4px !important;
-  }
-  #metrics-dashboard {
-    left: 52px !important;
-    font-size: 0.7rem;
-  }
-  #hud .text-sm, #hud .text-xs {
-    font-size: 0.65rem;
-  }
-  #hud .gap-4 {
-    gap: 0.5rem;
-  }
-  #hud .gap-3 {
-    gap: 0.4rem;
-  }
-  #hud .px-4 {
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
-  }
-  .menu-logo {
-    font-size: 2.5rem;
-  }
-  .menu-subtitle {
-    font-size: 0.75rem;
-  }
-  .menu-modes {
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 0 1rem;
-    width: 100%;
-  }
-  .mode-card {
-    width: 100% !important;
-    min-height: auto;
-    padding: 1rem;
-  }
-  .menu-footer {
-    font-size: 0.65rem;
-    padding: 0 0.5rem;
-  }
-
   #resource-palette {
-    width: 52px;
-    padding: 6px 0;
+    width: 44px !important;
+    padding: 4px 0 !important;
   }
   .palette-item {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 8px !important;
   }
   .palette-icon svg {
-    width: 20px;
-    height: 20px;
+    width: 18px !important;
+    height: 18px !important;
   }
   .palette-label {
-    font-size: 0.5rem;
+    display: none !important;
   }
   .palette-tooltip {
     display: none !important;
   }
   .palette-section-label {
-    font-size: 0.5rem;
-    padding: 0.2rem 0;
+    display: none !important;
   }
-
+  .palette-separator {
+    width: 24px !important;
+    margin: 2px 0 !important;
+  }
+  #hud {
+    height: 36px !important;
+    font-size: 0.6rem !important;
+  }
+  #hud > div {
+    gap: 0.35rem !important;
+    padding: 0 0.5rem !important;
+  }
+  #hud .text-sm, #hud .text-xs {
+    font-size: 0.6rem !important;
+  }
+  #hud .gap-4,
+  #hud .gap-3 {
+    gap: 0.3rem !important;
+  }
+  #hud .px-4 {
+    padding-left: 0.4rem !important;
+    padding-right: 0.4rem !important;
+  }
   #objectives-panel {
-    left: 56px !important;
-    width: 200px !important;
-    top: 48px !important;
+    left: 48px !important;
+    width: auto !important;
+    max-width: calc(100vw - 56px) !important;
+    min-width: 180px !important;
+    top: 40px !important;
+    max-height: 45vh !important;
+    overflow-y: auto !important;
   }
   #objectives-panel .text-sm {
-    font-size: 0.7rem;
+    font-size: 0.65rem !important;
+  }
+  #objectives-panel .p-3 {
+    padding: 0.4rem !important;
   }
   #obj-panel-desc {
-    font-size: 9px !important;
+    font-size: 8px !important;
+    display: none !important;
+  }
+  #inspector-panel {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    top: 36px !important;
+  }
+  #incident-panel {
+    width: 80vw !important;
+    max-width: 280px !important;
+    left: 48px !important;
+  }
+  #minimap-container {
+    display: none !important;
+  }
+  #game-github-badge {
+    display: none !important;
+  }
+  #metrics-dashboard {
+    left: 48px !important;
+    font-size: 0.65rem !important;
+    max-width: calc(100vw - 56px) !important;
   }
 
+
   #view-toolbar {
-    left: 56px;
-    transform: none;
-    bottom: 8px;
-    padding: 4px 6px;
-    gap: 4px;
-    max-width: calc(100vw - 64px);
-    overflow-x: auto;
-    scrollbar-width: none;
+    left: 48px !important;
+    transform: none !important;
+    bottom: 6px !important;
+    padding: 3px 4px !important;
+    gap: 2px !important;
+    max-width: calc(100vw - 56px) !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
   }
   #view-toolbar::-webkit-scrollbar {
     display: none;
   }
   #view-toolbar button {
-    padding: 6px 8px;
-    font-size: 0.65rem;
-    white-space: nowrap;
+    padding: 5px 6px !important;
+    font-size: 0 !important;
+    min-width: 28px !important;
   }
   #view-toolbar button svg {
-    width: 14px;
-    height: 14px;
+    width: 14px !important;
+    height: 14px !important;
   }
-  #view-toolbar button span,
-  #view-toolbar .text-\\[11px\\] {
-    display: none;
+  #view-toolbar button span {
+    display: none !important;
+  }
+  #view-toolbar kbd {
+    display: none !important;
   }
 
-  #game-github-badge {
-    top: auto !important;
-    bottom: 56px;
-    right: 8px !important;
-    padding: 4px 8px;
+  .menu-logo {
+    font-size: 2.5rem !important;
   }
-  #game-github-badge span {
-    display: none;
+  .menu-subtitle {
+    font-size: 0.7rem !important;
+  }
+  .menu-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.5rem !important;
+    padding: 0 1rem !important;
+  }
+  .menu-btn {
+    padding: 1rem !important;
+  }
+  .menu-footer {
+    font-size: 0.6rem !important;
+    gap: 0.75rem !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+  }
+  .github-badge-inner {
+    padding: 0.35rem 0.75rem !important;
+    font-size: 0.7rem !important;
   }
 
   .tutorial-card {
-    max-width: 90vw;
-    max-height: 85vh;
-    overflow-y: auto;
-    padding: 1rem;
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    padding: 1rem !important;
   }
   .tutorial-mode {
-    font-size: 1.2rem;
+    font-size: 1.1rem !important;
   }
   .tutorial-desc {
-    font-size: 0.75rem;
+    font-size: 0.7rem !important;
   }
   .tutorial-tip {
-    font-size: 0.7rem;
+    font-size: 0.65rem !important;
+    padding: 0.35rem 0.5rem !important;
+  }
+  .tutorial-key {
+    min-width: 50px !important;
+    font-size: 0.65rem !important;
   }
 
-  #name-prompt-overlay > div {
-    width: 85vw;
-    max-width: 280px;
+  #name-prompt-overlay > div,
+  #edit-dialog-overlay > div,
+  #selector-picker-overlay > div {
+    width: 90vw !important;
+    max-width: 300px !important;
+  }
+
+  .level-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    padding: 1rem !important;
+  }
+  .achievements-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .modal-content {
+    width: 95% !important;
+    padding: 1.25rem !important;
   }
 }
 
 @media (max-width: 480px) {
-  .menu-logo {
-    font-size: 2rem;
-  }
   #resource-palette {
-    width: 44px;
-    padding: 4px 0;
+    width: 38px !important;
+    padding: 2px 0 !important;
   }
   .palette-item {
-    width: 34px;
-    height: 34px;
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 6px !important;
   }
   .palette-icon svg {
-    width: 18px;
-    height: 18px;
+    width: 16px !important;
+    height: 16px !important;
   }
-  .palette-label {
-    font-size: 0.45rem;
+
+  #hud {
+    height: 32px !important;
   }
 
   #objectives-panel {
-    left: 48px !important;
-    width: 180px !important;
+    left: 42px !important;
+    max-width: calc(100vw - 48px) !important;
+    max-height: 40vh !important;
+    min-width: 160px !important;
+  }
+
+  #incident-panel {
+    left: 42px !important;
+    width: 85vw !important;
+    max-width: 260px !important;
+  }
+
+  #metrics-dashboard {
+    left: 42px !important;
   }
 
   #view-toolbar {
-    left: 48px;
+    left: 42px !important;
+    max-width: calc(100vw - 48px) !important;
+  }
+  #view-toolbar button {
+    padding: 4px 5px !important;
+    min-width: 24px !important;
+  }
+
+  .menu-logo {
+    font-size: 2rem !important;
+  }
+  .menu-grid {
+    gap: 0.4rem !important;
+  }
+  .menu-btn {
+    padding: 0.75rem !important;
+  }
+  .menu-btn-title {
+    font-size: 0.9rem !important;
+  }
+  .menu-btn-desc {
+    font-size: 0.65rem !important;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  #resource-palette {
+    top: 32px !important;
+    width: 38px !important;
+  }
+  .palette-item {
+    width: 28px !important;
+    height: 28px !important;
+  }
+  .palette-label,
+  .palette-section-label,
+  .palette-separator {
+    display: none !important;
+  }
+  #hud {
+    height: 32px !important;
+  }
+  #objectives-panel {
+    max-height: 50vh !important;
+  }
+  #minimap-container {
+    display: none !important;
   }
 }

@@ -115,7 +115,8 @@ export class InspectorPanel {
     document.getElementById('inspector-subtitle').textContent = `${kind} / ${ns} / ${status}`;
 
     const editBtn = document.getElementById('inspector-edit');
-    if (kind === 'Deployment' || kind === 'Service' || kind === 'ConfigMap') {
+    const editableKinds = ['Deployment', 'Service', 'ConfigMap', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Secret', 'Pod', 'Ingress', 'NetworkPolicy', 'HorizontalPodAutoscaler'];
+    if (editableKinds.includes(kind)) {
       editBtn.classList.remove('hidden');
     } else {
       editBtn.classList.add('hidden');
