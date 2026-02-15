@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 1200px;
+  height: 630px;
+  background: #0d1117;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
+  position: relative;
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(50,108,229,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(50,108,229,0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+  transform: perspective(800px) rotateX(55deg) rotateZ(-15deg) scale(2.2);
+  transform-origin: center 80%;
+}
+
+.grid-glow {
+  position: absolute;
+  bottom: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 900px;
+  height: 400px;
+  background: radial-gradient(ellipse at center, rgba(50,108,229,0.12) 0%, transparent 70%);
+}
+
+.content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 0 80px;
+}
+
+.logo {
+  font-size: 82px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  background: linear-gradient(135deg, #326CE5 0%, #58a6ff 40%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 0 40px rgba(50,108,229,0.3));
+}
+
+.tagline {
+  font-size: 26px;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 48px;
+  font-weight: 500;
+}
+
+.resources {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.resource {
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transform: translateY(0);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+.resource:nth-child(1) { background: linear-gradient(135deg, #326CE5, #2556b8); animation: float 3s ease-in-out infinite; }
+.resource:nth-child(2) { background: linear-gradient(135deg, #f97316, #c95e12); animation: float 3s ease-in-out 0.3s infinite; }
+.resource:nth-child(3) { background: linear-gradient(135deg, #a855f7, #8638d4); animation: float 3s ease-in-out 0.6s infinite; }
+.resource:nth-child(4) { background: linear-gradient(135deg, #22c55e, #1a9e4b); animation: float 3s ease-in-out 0.9s infinite; }
+.resource:nth-child(5) { background: linear-gradient(135deg, #ef4444, #c93636); animation: float 3s ease-in-out 1.2s infinite; }
+.resource:nth-child(6) { background: linear-gradient(135deg, #06b6d4, #049bae); animation: float 3s ease-in-out 1.5s infinite; }
+.resource:nth-child(7) { background: linear-gradient(135deg, #eab308, #c49607); animation: float 3s ease-in-out 1.8s infinite; }
+
+.resource svg { width: 36px; height: 36px; }
+.resource-label {
+  position: absolute;
+  bottom: -22px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.bottom-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.badge-icon {
+  font-size: 18px;
+}
+
+.badge-accent {
+  color: #58a6ff;
+  font-weight: 700;
+}
+
+.corner-tl, .corner-tr, .corner-bl, .corner-br {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-color: rgba(50,108,229,0.2);
+  border-style: solid;
+}
+.corner-tl { top: 24px; left: 24px; border-width: 2px 0 0 2px; border-radius: 8px 0 0 0; }
+.corner-tr { top: 24px; right: 24px; border-width: 2px 2px 0 0; border-radius: 0 8px 0 0; }
+.corner-bl { bottom: 24px; left: 24px; border-width: 0 0 2px 2px; border-radius: 0 0 0 8px; }
+.corner-br { bottom: 24px; right: 24px; border-width: 0 2px 2px 0; border-radius: 0 0 8px 0; }
+
+.url {
+  position: absolute;
+  bottom: 36px;
+  right: 44px;
+  font-size: 16px;
+  color: rgba(50,108,229,0.6);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="grid-glow"></div>
+
+  <div class="corner-tl"></div>
+  <div class="corner-tr"></div>
+  <div class="corner-bl"></div>
+  <div class="corner-br"></div>
+
+  <div class="content">
+    <div class="logo">K8s Games</div>
+    <div class="tagline">Learn Kubernetes by Playing</div>
+
+    <div class="resources">
+      <div class="resource">
+        <svg viewBox="0 0 24 24" fill="none"><polygon points="12,2 22,8 22,16 12,22 2,16 2,8" stroke="white" stroke-width="1.5" fill="white" fill-opacity="0.2"/></svg>
+        <div class="resource-label">Pod</div>
+      </div>
+      <div class="resource">
+        <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="3" stroke="white" stroke-width="1.5" fill="white" fill-opacity="0.2"/></svg>
+        <div class="resource-label">Deploy</div>
+      </div>
+      <div class="resource">
+        <svg viewBox="0 0 24 24" fill="none"><polygon points="12,3 20,8 20,16 12,21 4,16 4,8" stroke="white" stroke-width="1.5" fill="white" fill-opacity="0.2"/><text x="12" y="15" text-anchor="middle" fill="white" font-size="8" font-weight="bold">0</text></svg>
+        <div class="resource-label">STS</div>
+      </div>
+      <div class="resource">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="white" stroke-width="1.5" fill="white" fill-opacity="0.2"/><circle cx="12" cy="12" r="3" fill="white" fill-opacity="0.4"/></svg>
+        <div class="resource-label">Service</div>
+      </div>
+      <div class="resource">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12,3 L20,8 L20,16 L12,21 L4,16 L4,8 Z" stroke="white" stroke-width="1.5" fill="white" fill-opacity="0.15"/><path d="M12,8 L12,16" stroke="white" stroke-width="1.5"/></svg>
+        <div class="resource-label">NetPol</div>
+      </div>
+      <div class="resource">
+        <svg viewBox="0 0 24 24" fill="none"><polygon points="12,2 15,9 22,9 16,14 18,22 12,17 6,22 8,14 2,9 9,9" stroke="white" stroke-width="1.5" fill="white" fill-opacity="0.2"/></svg>
+        <div class="resource-label">DS</div>
+      </div>
+      <div class="resource">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" stroke-width="1.5" fill="white" fill-opacity="0.1"/><path d="M12,5 L12,12 L18,12" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+        <div class="resource-label">HPA</div>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="badge">
+        <span class="badge-icon">&#9654;</span>
+        <span><span class="badge-accent">20</span> Campaign Levels</span>
+      </div>
+      <div class="badge">
+        <span class="badge-icon">&#9889;</span>
+        <span><span class="badge-accent">26</span> Incident Types</span>
+      </div>
+      <div class="badge">
+        <span class="badge-icon">&#9881;</span>
+        <span><span class="badge-accent">17</span> K8s Resources</span>
+      </div>
+      <div class="badge">
+        <span class="badge-icon">&#128187;</span>
+        <span>kubectl Command Bar</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="url">k8sgames.com</div>
+</body>
+</html>
