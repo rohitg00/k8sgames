@@ -1,0 +1,158 @@
+import { ResourceBase } from './ResourceBase.js';
+
+export class PersistentVolumeClaim extends ResourceBase {
+  constructor(metadata = {}) {
+    super('PersistentVolumeClaim', metadata);
+    this.spec = {
+      accessModes: metadata.accessModes || ['ReadWriteOnce'],
+      resources: {
+        requests: { storage: metadata.storageRequest || '10Gi' },
+        limits: metadata.storageLimit ? { storage: metadata.storageLimit } : {}
+      },
+      storageClassName: metadata.storageClassName || 'standard',
+      volumeName: metadata.volumeName || null,
+      volumeMode: metadata.volumeMode || 'Filesystem',
+      selector: metadata.selector || null
+    };
+    this.phase = 'Pending';
+    this.boundVolume = null;
+    this.capacity = null;
+    this.bindingTimer = 0;
+    this.bindingDelay = 1 + Math.random() * 3;
+    this.mountedBy = [];
+    this.usedBytes = 0;
+    this.capacityBytes = this._parseStorage(this.spec.resources.requests.storage);
+    this.conditions = [];
+    this.setStatus('Pending');
+  }
+
+  _parseStorage(storage) {
+    if (typeof storage === 'number') return storage;
+    const units = { Ki: 1024, Mi: 1024 ** 2, Gi: 1024 ** 3, Ti: 1024 ** 4 };
+    for (const [suffix, multiplier] of Object.entries(units)) {
+      if (storage.endsWith(suffix)) return parseInt(storage) * multiplier;
+    }
+    return parseInt(storage);
+  }
+
+  _formatBytes(bytes) {
+    if (bytes >= 1024 ** 4) return `${(bytes / 1024 ** 4).toFixed(1)}Ti`;
+    if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)}Gi`;
+    if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)}Mi`;
+    if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)}Ki`;
+    return `${bytes}`;
+  }
+
+  bind(volumeName) {
+    this.phase = 'Bound';
+    this.boundVolume = volumeName;
+    this.capacity = { storage: this.spec.resources.requests.storage };
+    this.conditions.push({
+      type: 'Bound',
+      status: 'True',
+      lastTransitionTime: new Date().toISOString(),
+      reason: 'Bound',
+      message: `Bound to ${volumeName}`
+    });
+    this.addEvent('Normal', 'ProvisioningSucceeded', `Successfully provisioned volume ${volumeName}`);
+    this.setStatus('Bound');
+  }
+
+  release() {
+    this.phase = 'Released';
+    this.boundVolume = null;
+    this.setStatus('Released');
+    this.addEvent('Normal', 'Released', `PVC released`);
+  }
+
+  markLost() {
+    this.phase = 'Lost';
+    this.setStatus('Lost');
+    this.addEvent('Warning', 'VolumeLost', `Bound volume is no longer available`);
+  }
+
+  addMountReference(podName) {
+    if (!this.mountedBy.includes(podName)) this.mountedBy.push(podName);
+  }
+
+  removeMountReference(podName) {
+    this.mountedBy = this.mountedBy.filter(n => n !== podName);
+  }
+
+  getUsagePercent() {
+    if (!this.capacityBytes) return 0;
+    return (this.usedBytes / this.capacityBytes) * 100;
+  }
+
+  tick(deltaTime) {
+    super.tick(deltaTime);
+
+    if (this.phase === 'Pending') {
+      this.bindingTimer += deltaTime;
+      if (this.bindingTimer >= this.bindingDelay) {
+        const pvName = `pv-${this.uid.substring(0, 8)}`;
+        this.bind(pvName);
+      }
+    }
+
+    if (this.phase === 'Bound' && this.mountedBy.length > 0) {
+      this.usedBytes = Math.min(
+        this.capacityBytes,
+        Math.max(0, this.usedBytes + (Math.random() - 0.3) * this.capacityBytes * 0.005)
+      );
+
+      if (this.usedBytes >= this.capacityBytes * 0.9) {
+        this.addEvent('Warning', 'VolumeNearFull', `Volume usage at ${this.getUsagePercent().toFixed(1)}%`);
+      }
+    }
+  }
+
+  getShape() { return 'cylinder'; }
+  getColor() { return '#6b7280'; }
+
+  toYAML() {
+    return `apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ${this.metadata.name}
+  namespace: ${this.metadata.namespace}
+  uid: ${this.uid}
+  labels:
+${Object.entries(this.metadata.labels).map(([k, v]) => `    ${k}: "${v}"`).join('\n')}
+spec:
+  accessModes:
+${this.spec.accessModes.map(m => `  - ${m}`).join('\n')}
+  resources:
+    requests:
+      storage: ${this.spec.resources.requests.storage}
+  storageClassName: ${this.spec.storageClassName}
+  volumeMode: ${this.spec.volumeMode}
+${this.spec.volumeName ? `  volumeName: ${this.spec.volumeName}` : ''}
+status:
+  phase: ${this.phase}
+  accessModes:
+${this.spec.accessModes.map(m => `  - ${m}`).join('\n')}
+${this.capacity ? `  capacity:
+    storage: ${this.capacity.storage}` : ''}`;
+  }
+
+  toDescribe() {
+    return `Name:          ${this.metadata.name}
+Namespace:     ${this.metadata.namespace}
+StorageClass:  ${this.spec.storageClassName}
+Status:        ${this.phase}
+Volume:        ${this.boundVolume || '<none>'}
+Labels:        ${Object.entries(this.metadata.labels).map(([k, v]) => `${k}=${v}`).join(', ')}
+Annotations:   ${Object.entries(this.metadata.annotations).map(([k, v]) => `${k}=${v}`).join(', ') || '<none>'}
+Finalizers:    [kubernetes.io/pvc-protection]
+Capacity:      ${this.capacity ? this.capacity.storage : '<pending>'}
+Access Modes:  ${this.spec.accessModes.join(', ')}
+VolumeMode:    ${this.spec.volumeMode}
+Used By:       ${this.mountedBy.join(', ') || '<none>'}
+Usage:         ${this._formatBytes(this.usedBytes)} / ${this.spec.resources.requests.storage} (${this.getUsagePercent().toFixed(1)}%)
+Conditions:
+${this.conditions.map(c => `  Type: ${c.type}  Status: ${c.status}  Reason: ${c.reason}`).join('\n') || '  <none>'}
+Events:
+${this.events.slice(-10).map(e => `  ${e.type}\t${e.reason}\t${e.message}`).join('\n')}`;
+  }
+}

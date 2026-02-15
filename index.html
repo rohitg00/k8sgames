@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KubeOps - Kubernetes Cluster Management Simulation</title>
+  <meta name="description" content="Learn Kubernetes through interactive gameplay. Deploy pods, handle incidents, master kubectl commands.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%23326CE5'/><text x='16' y='21' text-anchor='middle' fill='white' font-size='14' font-weight='bold'>K</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com/3.4.1"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'k8s': '#326CE5',
+            'k8s-light': '#58a6ff',
+            'dark': '#0d1117',
+            'card': '#161b22',
+            'elevated': '#1c2333',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'SF Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.152.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.152.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body class="bg-dark text-white overflow-hidden select-none">
+
+  <canvas id="game-canvas"></canvas>
+
+  <div id="main-menu">
+    <div class="menu-logo">KubeOps</div>
+    <div class="menu-subtitle">Kubernetes Cluster Simulation</div>
+
+    <div class="menu-grid">
+      <button class="menu-btn" data-mode="campaign">
+        <span class="menu-btn-icon">&#9654;</span>
+        <div class="menu-btn-title">Campaign</div>
+        <div class="menu-btn-desc">20 levels from pods to production. Learn K8s step by step.</div>
+      </button>
+      <button class="menu-btn" data-mode="chaos">
+        <span class="menu-btn-icon">&#9889;</span>
+        <div class="menu-btn-title">Chaos Mode</div>
+        <div class="menu-btn-desc">Survive escalating incidents. SRE training at its finest.</div>
+      </button>
+      <button class="menu-btn" data-mode="sandbox">
+        <span class="menu-btn-icon">&#9881;</span>
+        <div class="menu-btn-title">Sandbox</div>
+        <div class="menu-btn-desc">Free cluster management. Design, build, get scored.</div>
+      </button>
+      <button class="menu-btn" data-mode="challenge">
+        <span class="menu-btn-icon">&#9201;</span>
+        <div class="menu-btn-title">Challenges</div>
+        <div class="menu-btn-desc">10 timed scenarios. Fix outages, deploy apps, race the clock.</div>
+      </button>
+    </div>
+
+    <div class="menu-footer">
+      <button class="menu-footer-btn" id="btn-settings">Settings</button>
+      <button class="menu-footer-btn" id="btn-achievements">Achievements</button>
+      <button class="menu-footer-btn" id="btn-stats">Stats</button>
+    </div>
+
+    <div style="margin-top: 2rem; text-align: center;">
+      <div style="font-size: 0.7rem; color: var(--text-muted);">
+        Press <span class="keyboard-hint">/</span> for kubectl &middot;
+        <span class="keyboard-hint">Space</span> pause &middot;
+        <span class="keyboard-hint">M</span> metrics &middot;
+        <span class="keyboard-hint">Esc</span> menu
+      </div>
+    </div>
+  </div>
+
+  <div id="game-container">
+    <div id="resource-palette" class="glass-dark">
+      <div class="palette-section-label">Workloads</div>
+
+      <div class="palette-item" data-resource="Pod" draggable="true">
+        <div class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none"><polygon points="12,2 22,8 22,16 12,22 2,16 2,8" stroke="#326CE5" stroke-width="1.5" fill="#326CE5" fill-opacity="0.2"/></svg>
+        </div>
+        <div class="palette-label">Pod</div>
+        <div class="palette-tooltip">Pod <span class="keyboard-hint">1</span></div>
+      </div>
+
+      <div class="palette-item" data-resource="Deployment" draggable="true">
+        <div class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="3" stroke="#f97316" stroke-width="1.5" fill="#f97316" fill-opacity="0.2"/></svg>
+        </div>
+        <div class="palette-label">Deploy</div>
+        <div class="palette-tooltip">Deployment <span class="keyboard-hint">2</span></div>
+      </div>
+
+      <div class="palette-item" data-resource="ReplicaSet" draggable="true">
+        <div class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="4" rx="1" stroke="#eab308" stroke-width="1" fill="#eab308" fill-opacity="0.15"/><rect x="4" y="10" width="16" height="4" rx="1" stroke="#eab308" stroke-width="1" fill="#eab308" fill-opacity="0.2"/><rect x="4" y="15" width="16" height="4" rx="1" stroke="#eab308" stroke-width="1" fill="#eab308" fill-opacity="0.25"/></svg>
+        </div>
+        <div class="palette-label">RS</div>
+        <div class="palette-tooltip">ReplicaSet <span class="keyboard-hint">3</span></div>
+      </div>
+
+      <div class="palette-item" data-resource="StatefulSet" draggable="true">
+        <div class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none"><polygon points="12,3 20,8 20,16 12,21 4,16 4,8" stroke="#a855f7" stroke-width="1.5" fill="#a855f7" fill-opacity="0.2"/><text x="12" y="15" text-anchor="middle" fill="#a855f7" font-size="8" font-weight="bold">0</text></svg>
+        </div>
+        <div class="palette-label">STS</div>
+        <div class="palette-tooltip">StatefulSet <span class="keyboard-hint">4</span></div>
+      </div>
+
+      <div class="palette-item" data-resource="DaemonSet" draggable="true">
+        <div class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none"><polygon points="12,2 15,9 22,9 16,14 18,22 12,17 6,22 8,14 2,9 9,9" stroke="#06b6d4" stroke-width="1.5" fill="#06b6d4" fill-opacity="0.2"/></svg>
+        </div>
+        <div class="palette-label">DS</div>
+        <div class="palette-tooltip">DaemonSet <span class="keyboard-hint">5</span></div>
+      </div>
+
+      <div class="palette-item" data-resource="Job" draggable="true">
+        <div class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12,3 L16,10 L12,17 L8,10 Z" stroke="#d97706" stroke-width="1.5" fill="#d97706" fill-opacity="0.2"/><line x1="8" y1="17" x2="16" y2="17" stroke="#d97706" stroke-width="1.5"/></svg>
+        </div>
+        <div class="palette-label">Job</div>
+        <div class="palette-tooltip">Job <span class="keyboard-hint">6</span></div>
+      </div>
+
+      <div class="palette-item" data-resource="CronJob" draggable="true">
+        <div class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#d97706" stroke-width="1.5" fill="#d97706" fill-opacity="0.15"/><line x1="12" y1="12" x2="12" y2="6" stroke="#d97706" stroke-width="1.5"/><line x1="12" y1="12" x2="17" y2="12" stroke="#d97706" stroke-width="1.5"/></svg>
+        </div>
+        <div class="palette-label">CronJob</div>
+        <div class="palette-tooltip">CronJob <span class="keyboard-hint">7</span></div>
+      </div>
+
+      <div class="palette-separator"></div>
+      <div class="palette-section-label">Network</div>
+
+      <div class="palette-item" data-resource="Service" draggable="true">
+        <div class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#326CE5" stroke-width="1.5" fill="#326CE5" fill-opacity="0.2"/><circle cx="12" cy="12" r="3" fill="#326CE5" fill-opacity="0.4"/></svg>
+        </div>
+        <div class="palette-label">Svc</div>
+        <div class="palette-tooltip">Service</div>
+      </div>
+
+      <div class="palette-item" data-resource="Ingress" draggable="true">
+        <div class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none"><polygon points="12,3 21,12 12,21 3,12" stroke="#8b5cf6" stroke-width="1.5" fill="#8b5cf6" fill-opacity="0.2"/></svg>
+        </div>
+        <div class="palette-label">Ingress</div>
+        <div class="palette-tooltip">Ingress</div>
+      </div>
+
+      <div class="palette-item" data-resource="NetworkPolicy" draggable="true">
+        <div class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12,3 L20,8 L20,16 L12,21 L4,16 L4,8 Z" stroke="#ef4444" stroke-width="1.5" fill="#22c55e" fill-opacity="0.15"/><path d="M12,8 L12,16" stroke="#22c55e" stroke-width="1.5"/></svg>
+        </div>
+        <div class="palette-label">NetPol</div>
+        <div class="palette-tooltip">NetworkPolicy</div>
+      </div>
+
+      <div class="palette-separator"></div>
+      <div class="palette-section-label">Config</div>
+
+      <div class="palette-item" data-resource="ConfigMap" draggable="true">
+        <div class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="5" y="3" width="14" height="18" rx="2" stroke="#92400e" stroke-width="1.5" fill="#92400e" fill-opacity="0.15"/><line x1="8" y1="8" x2="16" y2="8" stroke="#92400e" stroke-width="1"/><line x1="8" y1="12" x2="14" y2="12" stroke="#92400e" stroke-width="1"/></svg>
+        </div>
+        <div class="palette-label">CM</div>
+        <div class="palette-tooltip">ConfigMap</div>
+      </div>
+
+      <div class="palette-item" data-resource="Secret" draggable="true">
+        <div class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="6" y="10" width="12" height="10" rx="2" stroke="#991b1b" stroke-width="1.5" fill="#991b1b" fill-opacity="0.15"/><path d="M9,10 L9,7 a3,3 0 0 1 6,0 L15,10" stroke="#991b1b" stroke-width="1.5" fill="none"/><circle cx="12" cy="15" r="1.5" fill="#991b1b"/></svg>
+        </div>
+        <div class="palette-label">Secret</div>
+        <div class="palette-tooltip">Secret</div>
+      </div>
+
+      <div class="palette-separator"></div>
+      <div class="palette-section-label">Storage</div>
+
+      <div class="palette-item" data-resource="PersistentVolumeClaim" draggable="true">
+        <div class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="6" rx="8" ry="3" stroke="#6b7280" stroke-width="1.5" fill="#6b7280" fill-opacity="0.15"/><path d="M4,6 L4,18 a8,3 0 0 0 16,0 L20,6" stroke="#6b7280" stroke-width="1.5" fill="none"/></svg>
+        </div>
+        <div class="palette-label">PVC</div>
+        <div class="palette-tooltip">PersistentVolumeClaim</div>
+      </div>
+
+      <div class="palette-separator"></div>
+      <div class="palette-section-label">Cluster</div>
+
+      <div class="palette-item" data-resource="Node" draggable="true">
+        <div class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="8" width="18" height="10" rx="2" stroke="#374151" stroke-width="1.5" fill="#374151" fill-opacity="0.2"/><rect x="6" y="11" width="3" height="3" rx="0.5" fill="#374151" fill-opacity="0.4"/><rect x="11" y="11" width="3" height="3" rx="0.5" fill="#374151" fill-opacity="0.4"/></svg>
+        </div>
+        <div class="palette-label">Node</div>
+        <div class="palette-tooltip">Node <span class="keyboard-hint">8</span></div>
+      </div>
+
+      <div class="palette-item" data-resource="Namespace" draggable="true">
+        <div class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="#326CE5" stroke-width="1.5" stroke-dasharray="3 2" fill="#326CE5" fill-opacity="0.08"/></svg>
+        </div>
+        <div class="palette-label">NS</div>
+        <div class="palette-tooltip">Namespace <span class="keyboard-hint">9</span></div>
+      </div>
+
+      <div class="palette-item" data-resource="HorizontalPodAutoscaler" draggable="true">
+        <div class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#14b8a6" stroke-width="1.5" fill="#14b8a6" fill-opacity="0.1"/><path d="M12,5 L12,12 L18,12" stroke="#14b8a6" stroke-width="2" stroke-linecap="round"/><path d="M6,17 L9,14 L12,16 L18,10" stroke="#14b8a6" stroke-width="1.5" fill="none"/></svg>
+        </div>
+        <div class="palette-label">HPA</div>
+        <div class="palette-tooltip">HorizontalPodAutoscaler</div>
+      </div>
+
+      <div class="palette-item" data-resource="ResourceQuota" draggable="true">
+        <div class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="8" width="18" height="8" rx="1" stroke="#ca8a04" stroke-width="1.5" fill="#ca8a04" fill-opacity="0.15"/><line x1="3" y1="12" x2="21" y2="12" stroke="#ca8a04" stroke-width="1.5" stroke-dasharray="3 2"/></svg>
+        </div>
+        <div class="palette-label">Quota</div>
+        <div class="palette-tooltip">ResourceQuota</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="level-select">
+    <div style="max-width: 650px; width: 95%;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+        <h2 class="text-xl font-bold text-white">Campaign Levels</h2>
+        <button id="level-select-back" class="btn-secondary text-sm">Back</button>
+      </div>
+      <div class="level-grid" id="level-grid"></div>
+    </div>
+  </div>
+
+  <div id="challenge-select" class="modal-overlay">
+    <div class="modal-content" style="max-width: 550px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <h2 class="modal-title" style="margin-bottom:0">Challenges</h2>
+        <button id="challenge-back" class="btn-secondary text-sm">Back</button>
+      </div>
+      <div class="challenge-grid" id="challenge-grid"></div>
+    </div>
+  </div>
+
+  <div id="settings-panel" class="settings-panel">
+    <div class="settings-content">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+        <h2 class="text-lg font-bold">Settings</h2>
+        <button id="settings-close" class="btn-secondary text-sm">Close</button>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Sound Effects</span>
+        <button class="toggle active" id="toggle-sound"></button>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Particles</span>
+        <button class="toggle active" id="toggle-particles"></button>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Shadows</span>
+        <button class="toggle active" id="toggle-shadows"></button>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Grid</span>
+        <button class="toggle active" id="toggle-grid"></button>
+      </div>
+      <div class="settings-row" style="border-bottom: none;">
+        <span class="settings-label">Difficulty</span>
+        <select id="select-difficulty" class="bg-dark border border-white/10 rounded px-2 py-1 text-sm text-white/80 outline-none">
+          <option value="easy">Easy</option>
+          <option value="normal" selected>Normal</option>
+          <option value="hard">Hard</option>
+          <option value="nightmare">Nightmare</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div id="achievements-panel" class="modal-overlay">
+    <div class="modal-content" style="max-width: 600px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <h2 class="modal-title" style="margin-bottom:0">Achievements</h2>
+        <button id="achievements-close" class="btn-secondary text-sm">Close</button>
+      </div>
+      <div class="achievements-grid" id="achievements-grid"></div>
+    </div>
+  </div>
+
+  <div id="stats-panel" class="modal-overlay">
+    <div class="modal-content">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <h2 class="modal-title" style="margin-bottom:0">Statistics</h2>
+        <button id="stats-close" class="btn-secondary text-sm">Close</button>
+      </div>
+      <div id="stats-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="modal-level-complete" class="modal-overlay">
+    <div class="modal-content" style="text-align: center;">
+      <div class="text-3xl mb-2" id="level-complete-stars"></div>
+      <h2 class="modal-title" id="level-complete-title">Level Complete!</h2>
+      <div class="modal-body" id="level-complete-body"></div>
+      <div class="modal-actions" style="justify-content: center;">
+        <button class="btn-secondary" id="level-complete-menu">Menu</button>
+        <button class="btn-primary" id="level-complete-next">Next Level</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-game-over" class="modal-overlay">
+    <div class="modal-content" style="text-align: center;">
+      <div class="text-4xl mb-3">&#128165;</div>
+      <h2 class="modal-title">Cluster Down!</h2>
+      <div class="modal-body" id="game-over-body"></div>
+      <div class="modal-actions" style="justify-content: center;">
+        <button class="btn-secondary" id="game-over-menu">Menu</button>
+        <button class="btn-primary" id="game-over-retry">Retry</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading-screen" class="loading-screen" style="display: none;">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Initializing cluster...</div>
+  </div>
+
+  <script type="module">
+    import { GameEngine, GAME_MODES, GAME_STATES } from './js/engine/GameEngine.js';
+    import { ClusterRenderer } from './js/rendering/ClusterRenderer.js';
+    import { IncidentEngine } from './js/engine/IncidentEngine.js';
+    import { ScoringEngine } from './js/engine/ScoringEngine.js';
+    import { HUD } from './js/ui/HUD.js';
+    import { CommandBar } from './js/ui/CommandBar.js';
+    import { InspectorPanel } from './js/ui/InspectorPanel.js';
+    import { ContextMenu } from './js/ui/ContextMenu.js';
+    import { MetricsDashboard } from './js/ui/MetricsDashboard.js';
+    import { IncidentPanel } from './js/ui/IncidentPanel.js';
+    import { Minimap } from './js/ui/Minimap.js';
+    import { CampaignMode } from './js/modes/CampaignMode.js';
+    import { ChaosMode } from './js/modes/ChaosMode.js';
+    import { SandboxMode } from './js/modes/SandboxMode.js';
+    import { ChallengeMode } from './js/modes/ChallengeMode.js';
+    import { CAMPAIGN_LEVELS, CHAPTERS } from './js/data/CampaignLevels.js';
+    import { ACHIEVEMENTS } from './js/data/Achievements.js';
+    import { CHALLENGES } from './js/modes/ChallengeMode.js';
+    import { Pod, Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob } from './js/resources/WorkloadResources.js';
+    import { Service, Ingress, NetworkPolicy } from './js/resources/NetworkResources.js';
+    import { ConfigMap, Secret } from './js/resources/ConfigResources.js';
+    import { PersistentVolumeClaim } from './js/resources/StorageResources.js';
+    import { Node, Namespace, HorizontalPodAutoscaler, ResourceQuota } from './js/resources/ClusterResources.js';
+
+    const RESOURCE_CLASSES = {
+      Pod, Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob,
+      Service, Ingress, NetworkPolicy,
+      ConfigMap, Secret,
+      PersistentVolumeClaim,
+      Node, Namespace, HorizontalPodAutoscaler, ResourceQuota
+    };
+
+    function toRenderable(resource, x, y, z) {
+      return {
+        id: resource.uid || resource.metadata?.uid,
+        type: resource.kind,
+        name: resource.name || resource.metadata?.name || 'unnamed',
+        namespace: resource.namespace || resource.metadata?.namespace || 'default',
+        status: resource.status?.phase || resource.phase || 'Pending',
+        x: x ?? 0,
+        y: y ?? 0,
+        z: z ?? 0,
+        _ref: resource,
+      };
+    }
+
+    class KubeOpsApp {
+      constructor() {
+        this.engine = null;
+        this.renderer = null;
+        this.incidentEngine = null;
+        this.scoringEngine = null;
+        this.hud = null;
+        this.commandBar = null;
+        this.inspector = null;
+        this.contextMenu = null;
+        this.metrics = null;
+        this.incidentPanel = null;
+        this.minimap = null;
+        this.currentMode = null;
+        this.modeInstance = null;
+        this.dragResource = null;
+        this.dragGhost = null;
+        this.resourceCounter = {};
+        this.placedPositions = new Map();
+        this.settings = this.loadSettings();
+      }
+
+      async init() {
+        this.engine = new GameEngine({ mode: 'sandbox' });
+
+        const canvas = document.getElementById('game-canvas');
+        this.renderer = new ClusterRenderer(canvas);
+
+        this.incidentEngine = new IncidentEngine(this.engine);
+        this.scoringEngine = new ScoringEngine(this.engine);
+
+        window.game = {
+          engine: this.engine.eventBus,
+          cluster: this.engine.cluster,
+          renderer: this.renderer,
+          gameEngine: this.engine,
+          incidentEngine: this.incidentEngine,
+          scoringEngine: this.scoringEngine,
+          app: this,
+        };
+
+        this.hud = new HUD();
+        this.commandBar = new CommandBar();
+        this.inspector = new InspectorPanel();
+        this.contextMenu = new ContextMenu();
+        this.metrics = new MetricsDashboard();
+        this.incidentPanel = new IncidentPanel();
+        this.minimap = new Minimap();
+
+        this.bindMenuEvents();
+        this.bindGameEvents();
+        this.bindKeyboard();
+        this.bindPalette();
+        this.buildLevelSelect();
+        this.buildChallengeSelect();
+        this.buildAchievements();
+
+        this.engine.onUpdate((dt) => {
+          this.incidentEngine.tick(dt);
+          this.syncRenderState();
+        });
+
+        this.engine.eventBus.on('cluster:added', (data) => {
+          if (data.resource) {
+            const uid = data.resource.uid || data.resource.metadata?.uid;
+            if (!this.renderer.resourceMeshes.has(uid)) {
+              const pos = this.placedPositions.get(uid) || this.getPlacementPosition();
+              this.renderer.addResource(toRenderable(data.resource, pos.x, pos.y, pos.z));
+            }
+          }
+        });
+
+        this.engine.eventBus.on('cluster:deleted', (data) => {
+          const uid = data.uid || data.resource?.uid;
+          if (uid) {
+            this.renderer.removeResource(uid);
+            this.placedPositions.delete(uid);
+          }
+        });
+
+        this.renderer.onSelect = (uid) => {
+          this.engine.eventBus.emit('resource:selected', { uid });
+        };
+
+        this.renderer.onHover = (uid) => {
+          this.engine.eventBus.emit('resource:hovered', { uid });
+        };
+      }
+
+      loadSettings() {
+        try {
+          return JSON.parse(localStorage.getItem('kubeops_settings')) || {
+            sound: true, particles: true, shadows: true, grid: true, difficulty: 'normal'
+          };
+        } catch {
+          return { sound: true, particles: true, shadows: true, grid: true, difficulty: 'normal' };
+        }
+      }
+
+      saveSettings() {
+        localStorage.setItem('kubeops_settings', JSON.stringify(this.settings));
+      }
+
+      bindMenuEvents() {
+        document.querySelectorAll('.menu-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const mode = btn.dataset.mode;
+            this.startMode(mode);
+          });
+        });
+
+        document.getElementById('btn-settings').addEventListener('click', () => {
+          document.getElementById('settings-panel').classList.add('active');
+        });
+
+        document.getElementById('settings-close').addEventListener('click', () => {
+          document.getElementById('settings-panel').classList.remove('active');
+        });
+
+        document.getElementById('btn-achievements').addEventListener('click', () => {
+          this.buildAchievements();
+          document.getElementById('achievements-panel').classList.add('active');
+        });
+
+        document.getElementById('achievements-close').addEventListener('click', () => {
+          document.getElementById('achievements-panel').classList.remove('active');
+        });
+
+        document.getElementById('btn-stats').addEventListener('click', () => {
+          this.buildStats();
+          document.getElementById('stats-panel').classList.add('active');
+        });
+
+        document.getElementById('stats-close').addEventListener('click', () => {
+          document.getElementById('stats-panel').classList.remove('active');
+        });
+
+        document.querySelectorAll('.toggle').forEach(toggle => {
+          toggle.addEventListener('click', () => {
+            toggle.classList.toggle('active');
+            const id = toggle.id.replace('toggle-', '');
+            this.settings[id] = toggle.classList.contains('active');
+            this.saveSettings();
+            this.applySettings();
+          });
+        });
+
+        document.getElementById('select-difficulty').addEventListener('change', (e) => {
+          this.settings.difficulty = e.target.value;
+          this.saveSettings();
+          if (this.engine) {
+            this.engine.setDifficulty(e.target.value);
+          }
+        });
+
+        document.getElementById('level-select-back').addEventListener('click', () => {
+          document.getElementById('level-select').classList.remove('active');
+        });
+
+        document.getElementById('challenge-back').addEventListener('click', () => {
+          document.getElementById('challenge-select').classList.remove('active');
+        });
+
+        document.getElementById('level-complete-menu').addEventListener('click', () => {
+          document.getElementById('modal-level-complete').classList.remove('active');
+          this.returnToMenu();
+        });
+
+        document.getElementById('level-complete-next').addEventListener('click', () => {
+          document.getElementById('modal-level-complete').classList.remove('active');
+          if (this.modeInstance && this.modeInstance.nextLevel) {
+            this.modeInstance.nextLevel();
+          }
+        });
+
+        document.getElementById('game-over-menu').addEventListener('click', () => {
+          document.getElementById('modal-game-over').classList.remove('active');
+          this.returnToMenu();
+        });
+
+        document.getElementById('game-over-retry').addEventListener('click', () => {
+          document.getElementById('modal-game-over').classList.remove('active');
+          if (this.modeInstance && this.modeInstance.restart) {
+            this.modeInstance.restart();
+          } else {
+            this.startMode(this.currentMode);
+          }
+        });
+      }
+
+      bindGameEvents() {
+        this.engine.eventBus.on('mode:level-complete', (data) => {
+          const stars = data.stars || 0;
+          const starStr = '&#9733;'.repeat(stars) + '&#9734;'.repeat(3 - stars);
+          document.getElementById('level-complete-stars').innerHTML = starStr;
+          document.getElementById('level-complete-title').textContent = data.title || 'Level Complete!';
+          document.getElementById('level-complete-body').innerHTML = data.message || '';
+          document.getElementById('modal-level-complete').classList.add('active');
+        });
+
+        this.engine.eventBus.on('mode:game-over', (data) => {
+          document.getElementById('game-over-body').innerHTML = data.message || 'Your cluster has gone down.';
+          document.getElementById('modal-game-over').classList.add('active');
+        });
+
+        this.engine.eventBus.on('incident:created', (data) => {
+          if (data.incident) {
+            const inc = data.incident;
+            this.incidentPanel.addIncident(
+              inc.name || inc.defId || 'Unknown',
+              inc.severity || 3,
+              inc.target || null,
+              inc.description || '',
+              inc.id
+            );
+          }
+        });
+
+        this.engine.eventBus.on('ui:run-command', (data) => {
+          if (data.command && this.commandBar) {
+            this.commandBar._executeCommand(data.command);
+          }
+        });
+      }
+
+      bindKeyboard() {
+        document.addEventListener('keydown', (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+          switch (e.key) {
+            case '/':
+              e.preventDefault();
+              if (this.commandBar) this.commandBar.toggle();
+              break;
+            case ' ':
+              e.preventDefault();
+              if (this.engine) this.engine.togglePause();
+              break;
+            case 'm':
+            case 'M':
+              if (this.metrics) this.metrics.toggle();
+              break;
+            case 'Escape':
+              if (document.getElementById('settings-panel').classList.contains('active')) {
+                document.getElementById('settings-panel').classList.remove('active');
+              } else if (document.getElementById('achievements-panel').classList.contains('active')) {
+                document.getElementById('achievements-panel').classList.remove('active');
+              } else if (document.getElementById('stats-panel').classList.contains('active')) {
+                document.getElementById('stats-panel').classList.remove('active');
+              } else if (this.inspector && this.inspector.visible) {
+                this.inspector.hide();
+              } else if (this.currentMode) {
+                this.returnToMenu();
+              }
+              break;
+            case 'Delete':
+            case 'Backspace':
+              if (this.renderer && this.renderer.selectedResource) {
+                const uid = this.renderer.selectedResource;
+                this.engine.cluster.remove(uid);
+              }
+              break;
+            case '1': this.selectPaletteResource('Pod'); break;
+            case '2': this.selectPaletteResource('Deployment'); break;
+            case '3': this.selectPaletteResource('ReplicaSet'); break;
+            case '4': this.selectPaletteResource('StatefulSet'); break;
+            case '5': this.selectPaletteResource('DaemonSet'); break;
+            case '6': this.selectPaletteResource('Job'); break;
+            case '7': this.selectPaletteResource('CronJob'); break;
+            case '8': this.selectPaletteResource('Node'); break;
+            case '9': this.selectPaletteResource('Namespace'); break;
+          }
+        });
+      }
+
+      selectPaletteResource(kind) {
+        document.querySelectorAll('.palette-item').forEach(item => {
+          item.classList.toggle('selected', item.dataset.resource === kind);
+        });
+        this.selectedResource = kind;
+      }
+
+      bindPalette() {
+        const palette = document.getElementById('resource-palette');
+        if (!palette) return;
+
+        palette.addEventListener('dragstart', (e) => {
+          const item = e.target.closest('.palette-item');
+          if (!item) return;
+          this.dragResource = item.dataset.resource;
+          e.dataTransfer.setData('text/plain', this.dragResource);
+          e.dataTransfer.effectAllowed = 'copy';
+
+          this.dragGhost = document.createElement('div');
+          this.dragGhost.className = 'drag-ghost';
+          this.dragGhost.innerHTML = item.querySelector('.palette-icon').innerHTML;
+          document.body.appendChild(this.dragGhost);
+          e.dataTransfer.setDragImage(this.dragGhost, 20, 20);
+        });
+
+        palette.addEventListener('dragend', () => {
+          if (this.dragGhost) {
+            this.dragGhost.remove();
+            this.dragGhost = null;
+          }
+          this.dragResource = null;
+        });
+
+        palette.addEventListener('click', (e) => {
+          const item = e.target.closest('.palette-item');
+          if (!item) return;
+          const kind = item.dataset.resource;
+          this.placeResource(kind);
+        });
+
+        const canvas = document.getElementById('game-canvas');
+        canvas.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+        });
+
+        canvas.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const kind = e.dataTransfer.getData('text/plain');
+          if (kind && RESOURCE_CLASSES[kind]) {
+            this.placeResource(kind, e.clientX, e.clientY);
+          }
+        });
+
+        canvas.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          if (this.renderer && this.renderer.selectedResource) {
+            const uid = this.renderer.selectedResource;
+            const resource = this.engine.cluster.resources.get(uid);
+            if (resource) {
+              this.engine.eventBus.emit('resource:context-menu', {
+                uid,
+                resource,
+                x: e.clientX,
+                y: e.clientY,
+              });
+            }
+          }
+        });
+      }
+
+      placeResource(kind, screenX, screenY) {
+        const ResourceClass = RESOURCE_CLASSES[kind];
+        if (!ResourceClass) return;
+
+        if (!this.resourceCounter[kind]) this.resourceCounter[kind] = 0;
+        this.resourceCounter[kind]++;
+        const name = `${kind.toLowerCase()}-${this.resourceCounter[kind]}`;
+
+        const resource = new ResourceClass({ name, namespace: 'default' });
+        const pos = this.getPlacementPosition();
+        this.placedPositions.set(resource.uid, pos);
+        this.engine.cluster.add(resource);
+      }
+
+      getPlacementPosition() {
+        const spread = 3;
+        const count = this.engine.cluster.getAllResources().length;
+        const cols = Math.ceil(Math.sqrt(count + 1));
+        const row = Math.floor(count / cols);
+        const col = count % cols;
+        return {
+          x: (col - cols / 2) * spread,
+          y: 0,
+          z: (row - cols / 2) * spread,
+        };
+      }
+
+      startMode(mode) {
+        this.currentMode = mode;
+
+        if (mode === 'campaign') {
+          this.buildLevelSelect();
+          document.getElementById('level-select').classList.add('active');
+          return;
+        }
+
+        if (mode === 'challenge') {
+          this.buildChallengeSelect();
+          document.getElementById('challenge-select').classList.add('active');
+          return;
+        }
+
+        this.launchGame(mode);
+      }
+
+      launchGame(mode, levelOrChallenge) {
+        document.getElementById('main-menu').classList.add('hidden');
+        document.getElementById('level-select').classList.remove('active');
+        document.getElementById('challenge-select').classList.remove('active');
+        document.getElementById('game-container').classList.add('active');
+
+        this.engine.reset();
+        this.engine.setMode(mode);
+        this.engine.setDifficulty(this.settings.difficulty);
+        this.resourceCounter = {};
+
+        this.hud.init();
+        this.commandBar.init();
+        this.inspector.init();
+        this.contextMenu.init();
+        this.metrics.init();
+        this.incidentPanel.init();
+        this.minimap.init();
+
+        this.applySettings();
+
+        if (mode === 'campaign') {
+          this.modeInstance = new CampaignMode(this.engine, this.incidentEngine, this.scoringEngine);
+          this.modeInstance.startLevel(levelOrChallenge || 1);
+        } else if (mode === 'chaos') {
+          this.modeInstance = new ChaosMode(this.engine, this.incidentEngine, this.scoringEngine);
+          this.modeInstance.start();
+        } else if (mode === 'sandbox') {
+          this.modeInstance = new SandboxMode(this.engine, this.scoringEngine);
+          this.modeInstance.start();
+        } else if (mode === 'challenge') {
+          this.modeInstance = new ChallengeMode(this.engine, this.incidentEngine, this.scoringEngine);
+          this.modeInstance.startChallenge(levelOrChallenge || 1);
+        }
+
+        this.renderer.start();
+        this.engine.start();
+      }
+
+      returnToMenu() {
+        this.engine.stop();
+        this.renderer.stop();
+        if (this.modeInstance && this.modeInstance.cleanup) {
+          this.modeInstance.cleanup();
+        }
+        this.modeInstance = null;
+        this.currentMode = null;
+
+        document.getElementById('game-container').classList.remove('active');
+        document.getElementById('main-menu').classList.remove('hidden');
+
+        document.querySelectorAll('#hud, #command-bar, #inspector-panel, #context-menu-container, #metrics-dashboard, #incident-panel, #minimap-container').forEach(el => el?.remove());
+
+        for (const uid of [...this.renderer.resourceMeshes.keys()]) {
+          this.renderer.removeResource(uid);
+        }
+        this.placedPositions.clear();
+      }
+
+      syncRenderState() {
+        for (const [uid, resource] of this.engine.cluster.resources) {
+          if (this.renderer.resourceMeshes.has(uid)) {
+            const status = resource.status?.phase || resource.phase || 'Pending';
+            this.renderer.updateResource({ id: uid, status });
+          }
+        }
+      }
+
+      applySettings() {
+        if (this.renderer) {
+          if (this.renderer.renderer) {
+            this.renderer.renderer.shadowMap.enabled = this.settings.shadows;
+          }
+          if (this.renderer.gridGroup) {
+            this.renderer.gridGroup.visible = this.settings.grid;
+          }
+          if (this.renderer.particleSystem) {
+            this.renderer.particleSystem.enabled = this.settings.particles;
+          }
+        }
+      }
+
+      buildLevelSelect() {
+        const grid = document.getElementById('level-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        const progress = this.scoringEngine ? this.scoringEngine.progress : { campaignProgress: {} };
+        const campaignProgress = progress.campaignProgress || {};
+        let currentChapter = 0;
+
+        CAMPAIGN_LEVELS.forEach((level) => {
+          const chapter = level.chapter || Math.ceil(level.id / 4);
+          if (chapter !== currentChapter) {
+            currentChapter = chapter;
+            const chapterInfo = CHAPTERS?.[chapter - 1] || { name: `Chapter ${chapter}` };
+            const header = document.createElement('div');
+            header.className = 'chapter-header';
+            header.textContent = `Chapter ${chapter}: ${chapterInfo.name || chapterInfo.title || ''}`;
+            grid.appendChild(header);
+          }
+
+          const card = document.createElement('div');
+          const prevCompleted = level.id === 1 || campaignProgress[level.id - 1]?.completed;
+          const isLocked = !prevCompleted;
+          const isCompleted = campaignProgress[level.id]?.completed;
+          const stars = campaignProgress[level.id]?.stars || 0;
+
+          card.className = `level-card ${isLocked ? 'locked' : ''} ${isCompleted ? 'completed' : ''}`;
+          card.innerHTML = `
+            <div class="level-number">${level.id}</div>
+            <div class="level-title">${level.title || level.name || `Level ${level.id}`}</div>
+            <div class="level-stars">${isCompleted ? '&#9733;'.repeat(stars) + '&#9734;'.repeat(3 - stars) : '&#9734;&#9734;&#9734;'}</div>
+          `;
+
+          if (!isLocked) {
+            card.addEventListener('click', () => {
+              this.launchGame('campaign', level.id);
+            });
+          }
+
+          grid.appendChild(card);
+        });
+      }
+
+      buildChallengeSelect() {
+        const grid = document.getElementById('challenge-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        const challenges = CHALLENGES || [];
+        challenges.forEach((ch, idx) => {
+          const card = document.createElement('div');
+          card.className = 'challenge-card';
+          card.innerHTML = `
+            <div class="challenge-info">
+              <div class="challenge-name">${ch.title || ch.name || `Challenge ${idx + 1}`}</div>
+              <div class="challenge-desc">${ch.description || ''}</div>
+            </div>
+            <div class="challenge-time">${ch.timeLimit ? Math.floor(ch.timeLimit / 60) + ' min' : ''}</div>
+          `;
+          card.addEventListener('click', () => {
+            this.launchGame('challenge', ch.id || idx + 1);
+          });
+          grid.appendChild(card);
+        });
+      }
+
+      buildAchievements() {
+        const grid = document.getElementById('achievements-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        const unlocked = this.scoringEngine ? this.scoringEngine.unlockedAchievements : new Set();
+
+        ACHIEVEMENTS.forEach(ach => {
+          const isUnlocked = unlocked.has(ach.id);
+          const card = document.createElement('div');
+          card.className = `achievement-card ${isUnlocked ? 'unlocked' : 'locked'}`;
+          card.innerHTML = `
+            <div class="achievement-icon">${ach.icon || '&#127942;'}</div>
+            <div class="achievement-name">${isUnlocked ? ach.name : '???'}</div>
+            <div class="achievement-desc">${isUnlocked ? ach.description : 'Keep playing to unlock'}</div>
+          `;
+          grid.appendChild(card);
+        });
+      }
+
+      buildStats() {
+        const body = document.getElementById('stats-body');
+        if (!body) return;
+
+        const progress = this.scoringEngine ? this.scoringEngine.progress : {};
+        const stats = progress.stats || {};
+
+        body.innerHTML = `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+              <div class="text-xs text-white/40 uppercase tracking-wider mb-1">Total Pods</div>
+              <div class="text-lg font-bold text-white">${stats.totalPodsDeployed || 0}</div>
+            </div>
+            <div>
+              <div class="text-xs text-white/40 uppercase tracking-wider mb-1">Incidents Resolved</div>
+              <div class="text-lg font-bold text-white">${stats.totalIncidentsResolved || 0}</div>
+            </div>
+            <div>
+              <div class="text-xs text-white/40 uppercase tracking-wider mb-1">Commands Run</div>
+              <div class="text-lg font-bold text-white">${stats.totalCommandsExecuted || 0}</div>
+            </div>
+            <div>
+              <div class="text-xs text-white/40 uppercase tracking-wider mb-1">Time Played</div>
+              <div class="text-lg font-bold text-white">${this.formatTime(stats.totalTimePlayed || 0)}</div>
+            </div>
+            <div>
+              <div class="text-xs text-white/40 uppercase tracking-wider mb-1">Campaign Stars</div>
+              <div class="text-lg font-bold text-yellow-400">${stats.totalStars || 0} / 60</div>
+            </div>
+            <div>
+              <div class="text-xs text-white/40 uppercase tracking-wider mb-1">Achievements</div>
+              <div class="text-lg font-bold text-yellow-400">${(progress.achievements || []).length} / ${ACHIEVEMENTS.length}</div>
+            </div>
+            <div>
+              <div class="text-xs text-white/40 uppercase tracking-wider mb-1">Best Chaos Time</div>
+              <div class="text-lg font-bold text-red-400">${this.formatTime(stats.bestChaosTime || 0)}</div>
+            </div>
+            <div>
+              <div class="text-xs text-white/40 uppercase tracking-wider mb-1">XP Level</div>
+              <div class="text-lg font-bold text-blue-400">${progress.xpLevel || 1}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      formatTime(seconds) {
+        if (seconds < 60) return `${Math.floor(seconds)}s`;
+        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
+        return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+      }
+    }
+
+    const app = new KubeOpsApp();
+    app.init().catch(err => console.error('KubeOps init error:', err));
+  </script>
+</body>
+</html>
