@@ -4,7 +4,10 @@ const RESOURCE_TYPES = [
   'persistentvolumeclaims', 'pvc', 'persistentvolumes', 'pv',
   'statefulsets', 'sts', 'daemonsets', 'ds', 'replicasets', 'rs',
   'jobs', 'cronjobs', 'cj', 'endpoints', 'ep', 'events', 'ev',
-  'horizontalpodautoscalers', 'hpa', 'networkpolicies', 'netpol'
+  'horizontalpodautoscalers', 'hpa', 'networkpolicies', 'netpol',
+  'serviceaccounts', 'sa', 'roles', 'role', 'rolebindings', 'rolebinding',
+  'clusterroles', 'clusterrolebindings', 'resourcequotas', 'quota',
+  'poddisruptionbudgets', 'pdb', 'storageclasses', 'sc', 'limitranges'
 ];
 
 const KIND_ALIASES = {
@@ -26,10 +29,19 @@ const KIND_ALIASES = {
   ep: 'Endpoints', endpoints: 'Endpoints',
   ev: 'Event', events: 'Event',
   hpa: 'HorizontalPodAutoscaler', horizontalpodautoscalers: 'HorizontalPodAutoscaler',
-  netpol: 'NetworkPolicy', networkpolicies: 'NetworkPolicy'
+  netpol: 'NetworkPolicy', networkpolicies: 'NetworkPolicy', networkpolicy: 'NetworkPolicy',
+  sa: 'ServiceAccount', serviceaccounts: 'ServiceAccount', serviceaccount: 'ServiceAccount',
+  role: 'Role', roles: 'Role',
+  rolebinding: 'RoleBinding', rolebindings: 'RoleBinding',
+  clusterrole: 'ClusterRole', clusterroles: 'ClusterRole',
+  clusterrolebinding: 'ClusterRoleBinding', clusterrolebindings: 'ClusterRoleBinding',
+  quota: 'ResourceQuota', resourcequotas: 'ResourceQuota', resourcequota: 'ResourceQuota',
+  pdb: 'PodDisruptionBudget', poddisruptionbudgets: 'PodDisruptionBudget',
+  sc: 'StorageClass', storageclasses: 'StorageClass', storageclass: 'StorageClass',
+  limitrange: 'LimitRange', limitranges: 'LimitRange'
 };
 
-const COMMANDS = ['get', 'describe', 'logs', 'scale', 'delete', 'apply', 'rollout', 'drain', 'cordon', 'uncordon', 'top', 'exec'];
+const COMMANDS = ['get', 'describe', 'logs', 'scale', 'delete', 'apply', 'create', 'rollout', 'drain', 'cordon', 'uncordon', 'top', 'exec', 'label', 'run'];
 
 export class CommandBar {
   constructor() {
@@ -244,6 +256,9 @@ export class CommandBar {
       case 'scale': return this._cmdScale(args, cluster, engine);
       case 'delete': return this._cmdDelete(args, cluster, engine);
       case 'apply': return this._cmdApply(args, cluster, engine);
+      case 'create': return this._cmdCreate(args, cluster, engine);
+      case 'run': return this._cmdRun(args, cluster, engine);
+      case 'label': return this._cmdLabel(args, cluster, engine);
       case 'rollout': return this._cmdRollout(args, cluster, engine);
       case 'drain': return this._cmdDrain(args, cluster, engine);
       case 'cordon': return this._cmdCordon(args, cluster, engine, true);
@@ -333,6 +348,10 @@ export class CommandBar {
     const res = resources.find(r => r.metadata?.name === args[1]);
     if (!res) return { error: true, message: `Error from server (NotFound): ${kind.toLowerCase()}s "${args[1]}" not found` };
 
+    if (typeof res.toDescribe === 'function') {
+      return { error: false, message: res.toDescribe() };
+    }
+
     const lines = [
       `Name:         ${res.metadata.name}`,
       `Namespace:    ${res.metadata.namespace || 'default'}`,
@@ -344,8 +363,8 @@ export class CommandBar {
     ];
 
     if (kind === 'Pod') {
-      lines.push(`IP:           ${res.status?.podIP || '10.244.0.' + Math.floor(Math.random() * 255)}`);
-      lines.push(`Node:         ${res.spec?.nodeName || 'node-1'}`);
+      lines.push(`IP:           ${res.status?.podIP || '<none>'}`);
+      lines.push(`Node:         ${res.spec?.nodeName || '<none>'}`);
     }
     if (kind === 'Deployment') {
       lines.push(`Replicas:     ${res.status?.readyReplicas || 0} ready / ${res.spec?.replicas || 0} desired`);
@@ -380,20 +399,21 @@ export class CommandBar {
     if (!kindArg || !name || !replicasFlag) return { error: true, message: 'usage: kubectl scale <resource> <name> --replicas=<count>' };
 
     const kind = KIND_ALIASES[kindArg.toLowerCase()];
-    if (!kind || kind !== 'Deployment') return { error: true, message: `error: cannot scale ${kindArg}` };
+    const scalable = ['Deployment', 'StatefulSet', 'ReplicaSet'];
+    if (!kind || !scalable.includes(kind)) return { error: true, message: `error: cannot scale ${kindArg}` };
 
     const replicas = parseInt(replicasFlag.split('=')[1]);
     if (isNaN(replicas) || replicas < 0) return { error: true, message: 'error: invalid replicas value' };
 
     const resources = cluster.getResourcesByKind(kind);
     const res = resources.find(r => r.metadata?.name === name);
-    if (!res) return { error: true, message: `Error from server (NotFound): deployments "${name}" not found` };
+    if (!res) return { error: true, message: `Error from server (NotFound): ${kind.toLowerCase()}s "${name}" not found` };
 
     const oldReplicas = res.spec?.replicas || 0;
     if (res.spec) res.spec.replicas = replicas;
     engine.emit('resource:scaled', { uid: res.metadata.uid, kind, name, replicas, oldReplicas });
     engine.emit('xp:gain', { amount: 10 });
-    return { error: false, message: `deployment.apps/${name} scaled` };
+    return { error: false, message: `${kind.toLowerCase()}.apps/${name} scaled` };
   }
 
   _cmdDelete(args, cluster, engine) {
@@ -434,6 +454,92 @@ export class CommandBar {
     return { error: false, message: `${kind.toLowerCase()}/${name} created` };
   }
 
+  _cmdCreate(args, cluster, engine) {
+    if (args.length === 0) return { error: true, message: 'error: must specify a resource type.\nUsage: kubectl create <resource> <name> [options]' };
+
+    const kind = KIND_ALIASES[args[0]?.toLowerCase()];
+    if (!kind) return { error: true, message: `error: the server doesn't have a resource type "${args[0]}"` };
+
+    const name = args[1] || `${kind.toLowerCase()}-${Date.now().toString(36).slice(-4)}`;
+    const ns = args.includes('--namespace') ? args[args.indexOf('--namespace') + 1] : 'default';
+    const uid = `${kind.toLowerCase()}-${name}-${Date.now()}`;
+
+    const defaults = {
+      Pod: { spec: { containers: [{ name: 'main', image: 'nginx:latest' }] }, status: { phase: 'Pending' } },
+      Deployment: { spec: { replicas: 1, strategy: { type: 'RollingUpdate' } }, status: { readyReplicas: 0 } },
+      Service: { spec: { type: 'ClusterIP', ports: [{ port: 80, targetPort: 80 }] }, status: {} },
+      Namespace: { spec: {}, status: { phase: 'Active' } },
+      ConfigMap: { spec: { data: {} }, status: {} },
+      Secret: { spec: { type: 'Opaque', data: {} }, status: {} },
+      Job: { spec: { completions: 1, parallelism: 1 }, status: { active: 0, succeeded: 0, failed: 0 } },
+      DaemonSet: { spec: {}, status: {} },
+      StatefulSet: { spec: { replicas: 1 }, status: {} },
+      NetworkPolicy: { spec: { podSelector: {}, policyTypes: ['Ingress'] }, status: {} },
+    };
+
+    const def = defaults[kind] || { spec: {}, status: {} };
+    cluster.addResource({
+      kind,
+      name,
+      metadata: { uid, name, namespace: ns, creationTimestamp: new Date().toISOString(), labels: { app: name }, annotations: {} },
+      spec: def.spec,
+      status: def.status
+    });
+
+    engine.emit('resource:created', { uid, kind, name });
+    engine.emit('xp:gain', { amount: 15 });
+    return { error: false, message: `${kind.toLowerCase()}/${name} created` };
+  }
+
+  _cmdRun(args, cluster, engine) {
+    const name = args[0];
+    if (!name) return { error: true, message: 'error: must specify pod name.\nUsage: kubectl run <name> --image=<image>' };
+
+    const imageFlag = args.find(a => a.startsWith('--image='));
+    const image = imageFlag ? imageFlag.split('=')[1] : 'nginx:latest';
+    const uid = `pod-${name}-${Date.now()}`;
+
+    cluster.addResource({
+      kind: 'Pod',
+      name,
+      metadata: { uid, name, namespace: 'default', creationTimestamp: new Date().toISOString(), labels: { run: name }, annotations: {} },
+      spec: { containers: [{ name, image }] },
+      status: { phase: 'Pending' }
+    });
+
+    engine.emit('resource:created', { uid, kind: 'Pod', name });
+    engine.emit('xp:gain', { amount: 10 });
+    return { error: false, message: `pod/${name} created` };
+  }
+
+  _cmdLabel(args, cluster, engine) {
+    if (args.length < 3) return { error: true, message: 'usage: kubectl label <resource> <name> key=value [key=value...]' };
+
+    const kind = KIND_ALIASES[args[0]?.toLowerCase()];
+    if (!kind) return { error: true, message: `error: the server doesn't have a resource type "${args[0]}"` };
+
+    const name = args[1];
+    const resources = cluster.getResourcesByKind(kind);
+    const res = resources.find(r => r.metadata?.name === name);
+    if (!res) return { error: true, message: `Error from server (NotFound): ${kind.toLowerCase()}s "${name}" not found` };
+
+    if (!res.metadata.labels) res.metadata.labels = {};
+    const applied = [];
+    for (let i = 2; i < args.length; i++) {
+      const parts = args[i].split('=');
+      if (parts.length === 2) {
+        res.metadata.labels[parts[0]] = parts[1];
+        applied.push(args[i]);
+      } else if (args[i].endsWith('-')) {
+        const key = args[i].slice(0, -1);
+        delete res.metadata.labels[key];
+        applied.push(`${key}-`);
+      }
+    }
+    engine.emit('xp:gain', { amount: 5 });
+    return { error: false, message: `${kind.toLowerCase()}/${name} labeled\n${applied.join('\n')}` };
+  }
+
   _cmdRollout(args, cluster, engine) {
     const action = args[0];
     if (!action) return { error: true, message: 'usage: kubectl rollout [status|restart|undo] <resource> <name>' };
@@ -460,7 +566,13 @@ export class CommandBar {
       engine.emit('xp:gain', { amount: 10 });
       return { error: false, message: `deployment.apps/${name} rolled back` };
     }
-    return { error: true, message: `error: unknown rollout action "${action}"` };
+    if (action === 'history') {
+      const revisions = res._revisionHistory || [{ revision: 1, image: res.spec?.template?.spec?.containers?.[0]?.image || 'unknown' }];
+      const header = 'REVISION  CHANGE-CAUSE';
+      const rows = revisions.map((r, i) => `${String(r.revision || i + 1).padEnd(10)}${r.changeCause || r.image || '<none>'}`);
+      return { error: false, message: `${header}\n${rows.join('\n')}` };
+    }
+    return { error: true, message: `error: unknown rollout action "${action}"\nValid actions: status, restart, undo, history` };
   }
 
   _cmdDrain(args, cluster, engine) {
@@ -497,11 +609,14 @@ export class CommandBar {
       const header = 'NAME                     CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%';
       const rows = nodes.map(n => {
         const name = (n.metadata?.name || 'unknown').padEnd(25);
-        const cpuCores = `${Math.floor(Math.random() * 2000)}m`.padEnd(13);
-        const cpuPct = `${Math.floor(Math.random() * 80)}%`.padEnd(7);
-        const memBytes = `${Math.floor(Math.random() * 8000)}Mi`.padEnd(16);
-        const memPct = `${Math.floor(Math.random() * 75)}%`;
-        return `${name}${cpuCores}${cpuPct}${memBytes}${memPct}`;
+        const cpuUsed = n.cpuUsage ?? n.status?.allocatedCPU ?? 0;
+        const cpuCap = parseInt(n.spec?.cpu || n.status?.capacity?.cpu || '4') * 1000;
+        const memUsed = n.memoryUsage ?? n.status?.allocatedMemory ?? 0;
+        const memCapStr = n.spec?.memory || n.status?.capacity?.memory || '8Gi';
+        const memCap = parseInt(memCapStr) * (memCapStr.includes('Gi') ? 1024 : 1);
+        const cpuPct = cpuCap > 0 ? Math.round((cpuUsed / cpuCap) * 100) : 0;
+        const memPct = memCap > 0 ? Math.round((memUsed / memCap) * 100) : 0;
+        return `${name}${`${cpuUsed}m`.padEnd(13)}${`${cpuPct}%`.padEnd(7)}${`${memUsed}Mi`.padEnd(16)}${memPct}%`;
       });
       return { error: false, message: `${header}\n${rows.join('\n')}` };
     }
@@ -511,9 +626,9 @@ export class CommandBar {
       const header = 'NAME                     CPU(cores)   MEMORY(bytes)';
       const rows = pods.map(p => {
         const name = (p.metadata?.name || 'unknown').padEnd(25);
-        const cpu = `${Math.floor(Math.random() * 500)}m`.padEnd(13);
-        const mem = `${Math.floor(Math.random() * 512)}Mi`;
-        return `${name}${cpu}${mem}`;
+        const cpu = p.cpuUsage ?? p.status?.cpuUsage ?? 0;
+        const mem = p.memoryUsage ?? p.status?.memoryUsage ?? 0;
+        return `${name}${`${cpu}m`.padEnd(13)}${mem}Mi`;
       });
       return { error: false, message: `${header}\n${rows.join('\n')}` };
     }

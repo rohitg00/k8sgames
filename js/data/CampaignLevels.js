@@ -381,7 +381,7 @@ const CAMPAIGN_LEVELS = [
       { type: 'SecretExposed', triggerTime: 15, target: 'db-config', severity: 4 }
     ],
     hints: [
-      'Secrets are base64 encoded, ConfigMaps are not',
+      'Secrets are base64 encoded (not encrypted!) — use encryption at rest for true security',
       'Move sensitive data from ConfigMaps to Secrets',
       'The password in db-config ConfigMap is a security issue'
     ],

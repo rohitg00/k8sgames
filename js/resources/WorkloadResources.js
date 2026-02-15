@@ -265,8 +265,8 @@ export class Deployment extends ResourceBase {
       strategy: {
         type: metadata.strategyType || 'RollingUpdate',
         rollingUpdate: {
-          maxSurge: metadata.maxSurge || 1,
-          maxUnavailable: metadata.maxUnavailable || 0,
+          maxSurge: metadata.maxSurge || '25%',
+          maxUnavailable: metadata.maxUnavailable || '25%',
         },
       },
       template: {

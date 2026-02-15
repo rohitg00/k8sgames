@@ -375,7 +375,7 @@ const INCIDENT_DEFS = [
     visualEffect: 'slow-motion',
     affectedResourceTypes: ['Node'],
     investigationSteps: [
-      { command: 'kubectl get componentstatuses', hint: 'Check etcd health status' },
+      { command: 'kubectl -n kube-system get pods -l component=etcd', hint: 'Check etcd Pod health status' },
       { command: 'kubectl logs -n kube-system etcd-master', hint: 'Check etcd logs for slow operations' }
     ],
     resolutionActions: [
@@ -383,7 +383,7 @@ const INCIDENT_DEFS = [
       { action: 'compact-etcd', label: 'Compact etcd revisions', difficulty: 3 },
       { action: 'add-etcd-member', label: 'Scale etcd cluster', difficulty: 3 }
     ],
-    kubectlCommands: ['kubectl get componentstatuses', 'kubectl logs -n kube-system'],
+    kubectlCommands: ['kubectl get pods -n kube-system -l component=etcd', 'kubectl logs -n kube-system'],
     autoResolveTime: null
   },
   {
@@ -508,6 +508,69 @@ const INCIDENT_DEFS = [
       { action: 'retry-job', label: 'Delete and recreate the Job', difficulty: 1 }
     ],
     kubectlCommands: ['kubectl describe job', 'kubectl logs', 'kubectl delete job'],
+    autoResolveTime: null
+  },
+  {
+    id: 'liveness-probe-failure',
+    name: 'LivenessProbeFailure',
+    category: 'Pod',
+    severity: 3,
+    description: 'Liveness probe is failing. Container will be restarted by kubelet.',
+    visualEffect: 'pulse-red',
+    affectedResourceTypes: ['Pod', 'Deployment'],
+    investigationSteps: [
+      { command: 'kubectl describe pod <pod>', hint: 'Check liveness probe configuration and failure count' },
+      { command: 'kubectl logs <pod> --previous', hint: 'Check logs from the previous container instance' },
+      { command: 'kubectl get events --field-selector involvedObject.name=<pod>', hint: 'Look for Unhealthy events with type Liveness' }
+    ],
+    resolutionActions: [
+      { action: 'fix-probe-endpoint', label: 'Fix the health check endpoint', difficulty: 1 },
+      { action: 'increase-timeout', label: 'Increase timeoutSeconds and failureThreshold', difficulty: 1 },
+      { action: 'fix-app-startup', label: 'Add startupProbe for slow-starting containers', difficulty: 2 }
+    ],
+    kubectlCommands: ['kubectl describe pod', 'kubectl logs --previous', 'kubectl edit deployment'],
+    autoResolveTime: null
+  },
+  {
+    id: 'certificate-expiry',
+    name: 'CertificateExpiry',
+    category: 'ControlPlane',
+    severity: 5,
+    description: 'TLS certificate is expired or expiring soon. HTTPS traffic will fail.',
+    visualEffect: 'alert-red-border',
+    affectedResourceTypes: ['Secret', 'Ingress'],
+    investigationSteps: [
+      { command: 'kubectl get secret <tls-secret> -o jsonpath="{.data.tls\\.crt}" | base64 -d | openssl x509 -noout -dates', hint: 'Check certificate expiration date' },
+      { command: 'kubectl describe ingress <ingress>', hint: 'Verify TLS secret reference in Ingress' },
+      { command: 'kubectl get secrets --field-selector type=kubernetes.io/tls', hint: 'List all TLS secrets in the cluster' }
+    ],
+    resolutionActions: [
+      { action: 'renew-cert', label: 'Renew the TLS certificate', difficulty: 2 },
+      { action: 'update-secret', label: 'Update the Secret with new cert', difficulty: 1 },
+      { action: 'add-cert-manager', label: 'Install cert-manager for auto-renewal', difficulty: 3 }
+    ],
+    kubectlCommands: ['kubectl get secret', 'kubectl describe ingress', 'kubectl create secret tls'],
+    autoResolveTime: null
+  },
+  {
+    id: 'cronjob-missed-schedule',
+    name: 'CronJobMissedSchedule',
+    category: 'Workload',
+    severity: 2,
+    description: 'CronJob missed its scheduled execution window.',
+    visualEffect: 'pulse-yellow',
+    affectedResourceTypes: ['CronJob', 'Job'],
+    investigationSteps: [
+      { command: 'kubectl describe cronjob <cronjob>', hint: 'Check Last Schedule Time and active Jobs' },
+      { command: 'kubectl get jobs --sort-by=.status.startTime', hint: 'List recent Jobs created by this CronJob' },
+      { command: 'kubectl get events --field-selector involvedObject.name=<cronjob>', hint: 'Look for MissedSchedule events' }
+    ],
+    resolutionActions: [
+      { action: 'increase-deadline', label: 'Increase startingDeadlineSeconds', difficulty: 1 },
+      { action: 'fix-concurrency', label: 'Change concurrencyPolicy to Allow', difficulty: 1 },
+      { action: 'manual-trigger', label: 'Create a manual Job from CronJob template', difficulty: 1 }
+    ],
+    kubectlCommands: ['kubectl describe cronjob', 'kubectl get jobs', 'kubectl create job --from=cronjob/<name>'],
     autoResolveTime: null
   },
   {
