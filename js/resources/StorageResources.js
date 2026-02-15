@@ -1,5 +1,174 @@
 import { ResourceBase } from './ResourceBase.js';
 
+export class PersistentVolume extends ResourceBase {
+  constructor(metadata = {}) {
+    super('PersistentVolume', { ...metadata, namespace: '' });
+    this.apiVersion = 'v1';
+    this.spec = {
+      capacity: { storage: metadata.capacity || '10Gi' },
+      accessModes: metadata.accessModes || ['ReadWriteOnce'],
+      persistentVolumeReclaimPolicy: metadata.reclaimPolicy || 'Retain',
+      storageClassName: metadata.storageClassName || 'standard',
+      volumeMode: metadata.volumeMode || 'Filesystem',
+      hostPath: metadata.hostPath ? { path: metadata.hostPath } : null,
+      nfs: metadata.nfs || null,
+      csi: metadata.csi || null,
+      nodeAffinity: metadata.nodeAffinity || null,
+      mountOptions: metadata.mountOptions || [],
+    };
+    this.phase = 'Available';
+    this.claimRef = null;
+    this.capacityBytes = this._parseStorage(this.spec.capacity.storage);
+    this.setStatus('Available');
+  }
+
+  _parseStorage(storage) {
+    if (typeof storage === 'number') return storage;
+    const units = { Ki: 1024, Mi: 1024 ** 2, Gi: 1024 ** 3, Ti: 1024 ** 4 };
+    for (const [suffix, multiplier] of Object.entries(units)) {
+      if (storage.endsWith(suffix)) return parseInt(storage) * multiplier;
+    }
+    return parseInt(storage);
+  }
+
+  bind(pvcName, pvcNamespace, pvcUid) {
+    this.phase = 'Bound';
+    this.claimRef = { name: pvcName, namespace: pvcNamespace, uid: pvcUid };
+    this.setStatus('Bound');
+    this.addEvent('Normal', 'Bound', `Bound to PVC ${pvcNamespace}/${pvcName}`);
+  }
+
+  release() {
+    this.phase = 'Released';
+    this.setStatus('Released');
+    this.addEvent('Normal', 'Released', `Released from claim`);
+  }
+
+  reclaim() {
+    if (this.spec.persistentVolumeReclaimPolicy === 'Delete') {
+      this.phase = 'Failed';
+      this.setStatus('Failed');
+    } else {
+      this.phase = 'Available';
+      this.claimRef = null;
+      this.setStatus('Available');
+    }
+  }
+
+  markFailed(reason) {
+    this.phase = 'Failed';
+    this.setStatus('Failed');
+    this.addEvent('Warning', 'VolumeFailed', reason || 'Volume is in a failed state');
+  }
+
+  tick(deltaTime) {
+    super.tick(deltaTime);
+  }
+
+  getShape() { return 'cylinder-tall'; }
+  getColor() { return '#4b5563'; }
+
+  toYAML() {
+    const source = this.spec.hostPath
+      ? `  hostPath:\n    path: ${this.spec.hostPath.path}`
+      : this.spec.nfs
+        ? `  nfs:\n    server: ${this.spec.nfs.server}\n    path: ${this.spec.nfs.path}`
+        : `  local:\n    path: /mnt/data`;
+    return `apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: ${this.metadata.name}
+  uid: ${this.uid}
+  labels:
+${Object.entries(this.metadata.labels).map(([k, v]) => `    ${k}: "${v}"`).join('\n')}
+spec:
+  capacity:
+    storage: ${this.spec.capacity.storage}
+  accessModes:
+${this.spec.accessModes.map(m => `  - ${m}`).join('\n')}
+  persistentVolumeReclaimPolicy: ${this.spec.persistentVolumeReclaimPolicy}
+  storageClassName: ${this.spec.storageClassName}
+  volumeMode: ${this.spec.volumeMode}
+${source}
+${this.spec.mountOptions.length > 0 ? `  mountOptions:\n${this.spec.mountOptions.map(o => `  - ${o}`).join('\n')}` : ''}
+status:
+  phase: ${this.phase}
+${this.claimRef ? `  claimRef:\n    name: ${this.claimRef.name}\n    namespace: ${this.claimRef.namespace}` : ''}`;
+  }
+
+  toDescribe() {
+    return `Name:            ${this.metadata.name}
+Labels:          ${Object.entries(this.metadata.labels).map(([k, v]) => `${k}=${v}`).join(', ') || '<none>'}
+Annotations:     ${Object.entries(this.metadata.annotations).map(([k, v]) => `${k}=${v}`).join(', ') || '<none>'}
+StorageClass:    ${this.spec.storageClassName}
+Status:          ${this.phase}
+Claim:           ${this.claimRef ? `${this.claimRef.namespace}/${this.claimRef.name}` : ''}
+Reclaim Policy:  ${this.spec.persistentVolumeReclaimPolicy}
+Access Modes:    ${this.spec.accessModes.join(', ')}
+VolumeMode:      ${this.spec.volumeMode}
+Capacity:        ${this.spec.capacity.storage}
+Mount Options:   ${this.spec.mountOptions.join(', ') || '<none>'}
+Events:
+${this.events.slice(-10).map(e => `  ${e.type}\t${e.reason}\t${e.message}`).join('\n')}`;
+  }
+}
+
+export class StorageClass extends ResourceBase {
+  constructor(metadata = {}) {
+    super('StorageClass', { ...metadata, namespace: '' });
+    this.apiVersion = 'storage.k8s.io/v1';
+    this.spec = {
+      provisioner: metadata.provisioner || 'kubernetes.io/no-provisioner',
+      reclaimPolicy: metadata.reclaimPolicy || 'Delete',
+      volumeBindingMode: metadata.volumeBindingMode || 'WaitForFirstConsumer',
+      allowVolumeExpansion: metadata.allowVolumeExpansion || false,
+      parameters: metadata.parameters || {},
+      mountOptions: metadata.mountOptions || [],
+    };
+    this.isDefault = metadata.isDefault || false;
+    if (this.isDefault) {
+      this.metadata.annotations['storageclass.kubernetes.io/is-default-class'] = 'true';
+    }
+    this.setStatus('Active');
+  }
+
+  tick(deltaTime) {
+    super.tick(deltaTime);
+  }
+
+  getShape() { return 'database'; }
+  getColor() { return '#6366f1'; }
+
+  toYAML() {
+    return `apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ${this.metadata.name}
+  uid: ${this.uid}
+${this.isDefault ? `  annotations:\n    storageclass.kubernetes.io/is-default-class: "true"` : ''}
+provisioner: ${this.spec.provisioner}
+reclaimPolicy: ${this.spec.reclaimPolicy}
+volumeBindingMode: ${this.spec.volumeBindingMode}
+allowVolumeExpansion: ${this.spec.allowVolumeExpansion}
+${Object.keys(this.spec.parameters).length > 0 ? `parameters:\n${Object.entries(this.spec.parameters).map(([k, v]) => `  ${k}: "${v}"`).join('\n')}` : ''}
+${this.spec.mountOptions.length > 0 ? `mountOptions:\n${this.spec.mountOptions.map(o => `- ${o}`).join('\n')}` : ''}`;
+  }
+
+  toDescribe() {
+    return `Name:                  ${this.metadata.name}
+IsDefaultClass:        ${this.isDefault ? 'Yes' : 'No'}
+Annotations:           ${Object.entries(this.metadata.annotations).map(([k, v]) => `${k}=${v}`).join(', ') || '<none>'}
+Provisioner:           ${this.spec.provisioner}
+Parameters:            ${Object.entries(this.spec.parameters).map(([k, v]) => `${k}=${v}`).join(', ') || '<none>'}
+AllowVolumeExpansion:  ${this.spec.allowVolumeExpansion}
+MountOptions:          ${this.spec.mountOptions.join(', ') || '<none>'}
+ReclaimPolicy:         ${this.spec.reclaimPolicy}
+VolumeBindingMode:     ${this.spec.volumeBindingMode}
+Events:
+${this.events.slice(-10).map(e => `  ${e.type}\t${e.reason}\t${e.message}`).join('\n')}`;
+  }
+}
+
 export class PersistentVolumeClaim extends ResourceBase {
   constructor(metadata = {}) {
     super('PersistentVolumeClaim', metadata);

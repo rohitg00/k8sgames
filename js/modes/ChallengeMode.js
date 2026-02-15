@@ -23,7 +23,14 @@ const CHALLENGES = [
       { kind: 'Node', name: 'node-1', spec: { cpu: '8', memory: '16Gi' } },
       { kind: 'Node', name: 'node-2', spec: { cpu: '8', memory: '16Gi' } }
     ],
-    availableResources: ['Deployment', 'Service', 'ConfigMap', 'Secret', 'Namespace']
+    availableResources: ['Deployment', 'Service', 'ConfigMap', 'Secret', 'Namespace'],
+    hints: [
+      'Click "Deploy" in the palette, name it "frontend" — this creates a Deployment',
+      'Do the same for "backend" and "database"',
+      'Click "Svc" in the palette to create Services — one per deployment',
+      'Or press / and type: kubectl create deployment frontend',
+      'Services auto-connect to deployments in the same namespace',
+    ]
   },
   {
     id: 2,
@@ -43,7 +50,13 @@ const CHALLENGES = [
     preloadIncidents: [
       { type: 'CrashLoopBackOff', target: 'payment-service', severity: 3, triggerTime: 2 }
     ],
-    availableResources: ['Pod', 'Deployment']
+    availableResources: ['Pod', 'Deployment'],
+    hints: [
+      'Press / to open the command bar, type: kubectl describe pod payment-service',
+      'Check the Events section to find the crash reason',
+      'Use kubectl logs to see container output',
+      'Fix by scaling or restarting: kubectl rollout restart deployment payment-service',
+    ]
   },
   {
     id: 3,
@@ -63,7 +76,12 @@ const CHALLENGES = [
       { kind: 'Deployment', name: 'api', spec: { replicas: 2 } },
       { kind: 'Service', name: 'api-svc', spec: { port: 3000 } }
     ],
-    availableResources: ['Ingress', 'Secret', 'Service']
+    availableResources: ['Ingress', 'Secret', 'Service'],
+    hints: [
+      'Create an Ingress from the palette and configure routes for /app and /api',
+      'Create a Secret of type kubernetes.io/tls for TLS termination',
+      'The Ingress will link to existing app-svc and api-svc Services',
+    ]
   },
   {
     id: 4,
@@ -86,7 +104,12 @@ const CHALLENGES = [
       { kind: 'Deployment', name: 'api', spec: { namespace: 'backend', replicas: 2 } },
       { kind: 'Deployment', name: 'postgres', spec: { namespace: 'database', replicas: 1 } }
     ],
-    availableResources: ['NetworkPolicy']
+    availableResources: ['NetworkPolicy'],
+    hints: [
+      'Create a NetworkPolicy in the "database" namespace that denies all ingress by default',
+      'Add a second NetworkPolicy that allows ingress from pods with label "app=api"',
+      'A third policy should deny frontend-to-database traffic',
+    ]
   },
   {
     id: 5,
@@ -108,7 +131,13 @@ const CHALLENGES = [
       { kind: 'Service', name: 'web-svc', spec: { port: 80 } },
       { kind: 'Service', name: 'api-svc', spec: { port: 3000 } }
     ],
-    availableResources: ['Node', 'Deployment', 'HorizontalPodAutoscaler']
+    availableResources: ['Node', 'Deployment', 'HorizontalPodAutoscaler'],
+    hints: [
+      'Press / and type: kubectl scale deployment web --replicas=10',
+      'Then: kubectl scale deployment api --replicas=8',
+      'Create HPAs from the palette to enable autoscaling',
+      'Add more Nodes from the palette if pods are Pending (unschedulable)',
+    ]
   },
   {
     id: 6,
@@ -132,7 +161,12 @@ const CHALLENGES = [
       { type: 'NodeNotReady', target: 'node-2', severity: 5, triggerTime: 3 },
       { type: 'PodEviction', target: 'app', severity: 2, triggerTime: 8 }
     ],
-    availableResources: ['Node', 'Pod', 'Deployment', 'PodDisruptionBudget']
+    availableResources: ['Node', 'Pod', 'Deployment', 'PodDisruptionBudget'],
+    hints: [
+      'Use kubectl to uncordon or fix the failed node: kubectl uncordon node-2',
+      'Pods on failed nodes need rescheduling — the scheduler handles this automatically',
+      'Create a PodDisruptionBudget from the palette to protect against future disruptions',
+    ]
   },
   {
     id: 7,
@@ -151,7 +185,14 @@ const CHALLENGES = [
       { kind: 'Node', name: 'node-2', spec: { cpu: '8', memory: '16Gi' } },
       { kind: 'Node', name: 'node-3', spec: { cpu: '8', memory: '16Gi' } }
     ],
-    availableResources: ['StatefulSet', 'Service', 'PersistentVolume', 'PersistentVolumeClaim', 'StorageClass']
+    availableResources: ['StatefulSet', 'Service', 'PersistentVolume', 'PersistentVolumeClaim', 'StorageClass'],
+    hints: [
+      'Create a StatefulSet from the palette — these maintain stable pod identities',
+      'Scale it with: kubectl scale statefulset <name> --replicas=3',
+      'Create PVCs for each replica — StatefulSets need persistent storage',
+      'A headless Service has clusterIP: None — used for StatefulSet DNS',
+      'Create PersistentVolumes to back the PVCs',
+    ]
   },
   {
     id: 8,
@@ -174,7 +215,13 @@ const CHALLENGES = [
     preloadIncidents: [
       { type: 'UnauthorizedAccess', target: 'overprivileged-sa', severity: 5, triggerTime: 5 }
     ],
-    availableResources: ['ServiceAccount', 'Role', 'ClusterRole', 'RoleBinding', 'ClusterRoleBinding']
+    availableResources: ['ServiceAccount', 'Role', 'ClusterRole', 'RoleBinding', 'ClusterRoleBinding'],
+    hints: [
+      'Create 2 ServiceAccounts — one per workload that needs its own identity',
+      'Create Roles with specific permissions (not wildcards *)',
+      'Bind Roles to ServiceAccounts using RoleBindings',
+      'The existing overprivileged-sa has wildcard permissions — fix by creating least-privilege Roles',
+    ]
   },
   {
     id: 9,
@@ -197,7 +244,12 @@ const CHALLENGES = [
     preloadIncidents: [
       { type: 'DNSResolutionFailure', target: 'kube-dns', severity: 4, triggerTime: 2 }
     ],
-    availableResources: ['NetworkPolicy', 'Pod', 'Service']
+    availableResources: ['NetworkPolicy', 'Pod', 'Service'],
+    hints: [
+      'The strict-deny NetworkPolicy is blocking DNS resolution',
+      'Create a NetworkPolicy that allows egress to kube-dns on port 53',
+      'Use kubectl describe to check the existing NetworkPolicy rules',
+    ]
   },
   {
     id: 10,
@@ -224,6 +276,14 @@ const CHALLENGES = [
       'Namespace', 'Pod', 'Deployment', 'Service', 'Ingress', 'ConfigMap', 'Secret',
       'NetworkPolicy', 'PersistentVolume', 'PersistentVolumeClaim', 'StatefulSet',
       'HorizontalPodAutoscaler', 'Role', 'RoleBinding', 'ServiceAccount'
+    ],
+    hints: [
+      'Create 3 namespaces (e.g. frontend, backend, database)',
+      'Deploy one application per namespace',
+      'Expose each with a Service, then create an Ingress for external access',
+      'Add NetworkPolicies to segment traffic between namespaces',
+      'Store credentials in Secrets, configure HPA for autoscaling',
+      'Add liveness and readiness probes to Deployments for health checking',
     ]
   }
 ];
@@ -567,6 +627,15 @@ class ChallengeMode {
     return this.startChallenge(this.currentChallenge);
   }
 
+  useHint(index) {
+    const hints = this.currentChallengeDef?.hints || [];
+    if (index >= 0 && index < hints.length) {
+      this._usedHints = true;
+      return hints[index];
+    }
+    return null;
+  }
+
   getStatus() {
     return {
       state: this.state,
@@ -577,7 +646,8 @@ class ChallengeMode {
       timeLimit: this.currentChallengeDef?.timeLimit || 0,
       objectives: this.objectiveProgress,
       completionPercentage: this.getCompletionPercentage(),
-      activeIncidents: this.incidentEngine.getActiveIncidents().length
+      activeIncidents: this.incidentEngine.getActiveIncidents().length,
+      hints: this.currentChallengeDef?.hints || [],
     };
   }
 

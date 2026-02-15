@@ -156,6 +156,11 @@
         YAML
       </button>
       <div class="w-px h-5 bg-white/10"></div>
+      <div class="flex items-center gap-1.5 px-2 py-1 text-[11px] text-white/30">
+        <kbd class="px-1.5 py-0.5 bg-white/8 border border-white/10 rounded text-white/50 font-mono text-[10px]">/</kbd>
+        <span>kubectl</span>
+      </div>
+      <div class="w-px h-5 bg-white/10"></div>
       <button id="btn-help" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/80 hover:text-white bg-white/5 hover:bg-amber-500/20 border border-white/10 hover:border-amber-400/40 rounded-lg transition-all" title="How to play (?)">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01"/><circle cx="12" cy="12" r="10" stroke-width="2"/></svg>
         Help
@@ -439,15 +444,17 @@
     import { Pod, Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob } from './js/resources/WorkloadResources.js';
     import { Service, Ingress, NetworkPolicy } from './js/resources/NetworkResources.js';
     import { ConfigMap, Secret } from './js/resources/ConfigResources.js';
-    import { PersistentVolumeClaim } from './js/resources/StorageResources.js';
-    import { Node, Namespace, HorizontalPodAutoscaler, ResourceQuota } from './js/resources/ClusterResources.js';
+    import { PersistentVolume, StorageClass, PersistentVolumeClaim } from './js/resources/StorageResources.js';
+    import { Node, Namespace, HorizontalPodAutoscaler, ResourceQuota, PodDisruptionBudget } from './js/resources/ClusterResources.js';
+    import { ServiceAccount, Role, ClusterRole, RoleBinding, ClusterRoleBinding } from './js/resources/RBACResources.js';
 
     const RESOURCE_CLASSES = {
       Pod, Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob,
       Service, Ingress, NetworkPolicy,
       ConfigMap, Secret,
-      PersistentVolumeClaim,
-      Node, Namespace, HorizontalPodAutoscaler, ResourceQuota
+      PersistentVolume, StorageClass, PersistentVolumeClaim,
+      Node, Namespace, HorizontalPodAutoscaler, ResourceQuota, PodDisruptionBudget,
+      ServiceAccount, Role, ClusterRole, RoleBinding, ClusterRoleBinding
     };
 
     function toRenderable(resource, x, y, z) {
@@ -887,22 +894,95 @@
         const ResourceClass = RESOURCE_CLASSES[kind];
         if (!ResourceClass) return;
 
+        this._showNamePrompt(kind, (chosenName) => {
+          const resource = new ResourceClass({ name: chosenName, namespace: 'default' });
+
+          let pos = null;
+          if (screenX !== undefined && screenY !== undefined && this.renderer) {
+            pos = this.renderer.screenToGround(screenX, screenY);
+          }
+          if (!pos) {
+            pos = this.getPlacementPosition();
+          }
+
+          this.placedPositions.set(resource.uid, pos);
+          this.engine.cluster.add(resource);
+        });
+      }
+
+      _showNamePrompt(kind, callback) {
         if (!this.resourceCounter[kind]) this.resourceCounter[kind] = 0;
         this.resourceCounter[kind]++;
-        const name = `${kind.toLowerCase()}-${this.resourceCounter[kind]}`;
+        const defaultName = `${kind.toLowerCase().replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}-${this.resourceCounter[kind]}`;
 
-        const resource = new ResourceClass({ name, namespace: 'default' });
+        const overlay = document.createElement('div');
+        overlay.id = 'name-prompt-overlay';
+        overlay.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm';
 
-        let pos = null;
-        if (screenX !== undefined && screenY !== undefined && this.renderer) {
-          pos = this.renderer.screenToGround(screenX, screenY);
+        const suggestions = this._getNameSuggestions(kind);
+        const suggestionsHtml = suggestions.length > 0
+          ? `<div class="flex flex-wrap gap-1.5 mt-2">${suggestions.map(s => `<button class="name-suggestion px-2 py-1 text-xs rounded-md bg-sky-500/10 text-sky-400/80 hover:bg-sky-500/20 hover:text-sky-400 border border-sky-500/15 hover:border-sky-500/30 transition-all">${s}</button>`).join('')}</div>`
+          : '';
+
+        overlay.innerHTML = `
+          <div class="w-72 rounded-xl bg-gray-900/95 border border-white/10 shadow-2xl p-4">
+            <div class="text-xs text-white/40 font-medium uppercase tracking-wider mb-1">Create ${kind}</div>
+            <input id="name-prompt-input" type="text" value="${defaultName}" class="w-full px-3 py-2 text-sm text-white bg-black/40 border border-white/15 rounded-lg outline-none focus:border-sky-500/50 font-mono" spellcheck="false" autocomplete="off" />
+            ${suggestionsHtml}
+            <div class="flex gap-2 mt-3">
+              <button id="name-prompt-ok" class="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-sky-600 hover:bg-sky-500 rounded-lg transition-colors">Create</button>
+              <button id="name-prompt-cancel" class="px-3 py-1.5 text-xs font-medium text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors">Cancel</button>
+            </div>
+            <div class="text-[10px] text-white/30 mt-2 text-center">Tip: Name must match the objective (e.g. "frontend")</div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+
+        const input = document.getElementById('name-prompt-input');
+        input.select();
+        input.focus();
+
+        const submit = () => {
+          const val = input.value.trim();
+          if (val) {
+            overlay.remove();
+            callback(val);
+          }
+        };
+
+        document.getElementById('name-prompt-ok').addEventListener('click', submit);
+        document.getElementById('name-prompt-cancel').addEventListener('click', () => {
+          this.resourceCounter[kind]--;
+          overlay.remove();
+        });
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') submit();
+          if (e.key === 'Escape') { this.resourceCounter[kind]--; overlay.remove(); }
+        });
+        overlay.querySelectorAll('.name-suggestion').forEach(btn => {
+          btn.addEventListener('click', () => {
+            input.value = btn.textContent;
+            submit();
+          });
+        });
+      }
+
+      _getNameSuggestions(kind) {
+        if (!this.modeInstance?.getStatus) return [];
+        const status = this.modeInstance.getStatus();
+        const objectives = status.objectives || [];
+        const suggestions = [];
+        for (const obj of objectives) {
+          if (obj.completed) continue;
+          if (obj.type === 'deploy' && obj.name && obj.kind === kind) {
+            suggestions.push(obj.name);
+          }
+          if (obj.type === 'deploy' && !obj.name && obj.kind === kind) continue;
+          if (obj.type === 'scale' && obj.name && obj.kind === kind) {
+            suggestions.push(obj.name);
+          }
         }
-        if (!pos) {
-          pos = this.getPlacementPosition();
-        }
-
-        this.placedPositions.set(resource.uid, pos);
-        this.engine.cluster.add(resource);
+        return [...new Set(suggestions)];
       }
 
       getPlacementPosition() {
@@ -1269,10 +1349,11 @@
                 'Ch 5 (L17-20): HPA, ResourceQuotas, RBAC, production setup',
             ],
             challenge: [
-                '10 timed scenarios with specific objectives',
-                'Deploy microservices, fix outages, configure networking',
-                'Use kubectl commands for faster operations',
-                'Score based on completion time and accuracy',
+                '<b>Click resources</b> in the left palette to create them — a name prompt appears so you can match objective names (e.g. "frontend")',
+                '<b>Press /</b> to open the kubectl command bar — type commands like: <code>kubectl create deployment frontend</code>',
+                '<b>Name suggestions</b> appear as blue buttons when creating — click them to auto-fill the required name',
+                '<b>Click the lightbulb</b> (Show Hint) on the objectives panel for step-by-step guidance',
+                'Right-click any resource for actions: scale, delete, logs, restart',
             ],
         };
 

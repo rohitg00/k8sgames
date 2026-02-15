@@ -264,6 +264,16 @@ export class ResourceBase {
     return this;
   }
 
+  get events() {
+    return this._events;
+  }
+
+  tick(deltaTime) {}
+
+  addEvent(type, reason, message) {
+    return this.recordEvent(type, reason, message);
+  }
+
   recordEvent(type, reason, message) {
     const event = {
       type,

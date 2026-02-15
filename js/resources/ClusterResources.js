@@ -607,3 +607,93 @@ Events:
 ${this.events.slice(-10).map(e => `  ${e.type}\t${e.reason}\t${e.message}`).join('\n')}`;
   }
 }
+
+export class PodDisruptionBudget extends ResourceBase {
+  constructor(metadata = {}) {
+    super('PodDisruptionBudget', metadata);
+    this.apiVersion = 'policy/v1';
+    this.spec = {
+      selector: { matchLabels: metadata.matchLabels || {} },
+      minAvailable: metadata.minAvailable !== undefined ? metadata.minAvailable : null,
+      maxUnavailable: metadata.maxUnavailable !== undefined ? metadata.maxUnavailable : (metadata.minAvailable !== undefined ? null : 1),
+      unhealthyPodEvictionPolicy: metadata.unhealthyPodEvictionPolicy || 'IfHealthy',
+    };
+    this.currentHealthy = 0;
+    this.desiredHealthy = 0;
+    this.disruptionsAllowed = 0;
+    this.expectedPods = 0;
+    this.observedGeneration = 1;
+    this.setStatus('Active');
+  }
+
+  updateStatus(matchingPods) {
+    const running = matchingPods.filter(p => p.phase === 'Running' || p.status?.phase === 'Running');
+    this.expectedPods = matchingPods.length;
+    this.currentHealthy = running.length;
+
+    if (this.spec.minAvailable !== null) {
+      const minAvail = typeof this.spec.minAvailable === 'string' && this.spec.minAvailable.endsWith('%')
+        ? Math.ceil(this.expectedPods * parseInt(this.spec.minAvailable) / 100)
+        : parseInt(this.spec.minAvailable);
+      this.desiredHealthy = minAvail;
+      this.disruptionsAllowed = Math.max(0, this.currentHealthy - minAvail);
+    } else if (this.spec.maxUnavailable !== null) {
+      const maxUnavail = typeof this.spec.maxUnavailable === 'string' && this.spec.maxUnavailable.endsWith('%')
+        ? Math.ceil(this.expectedPods * parseInt(this.spec.maxUnavailable) / 100)
+        : parseInt(this.spec.maxUnavailable);
+      this.desiredHealthy = Math.max(0, this.expectedPods - maxUnavail);
+      this.disruptionsAllowed = Math.max(0, maxUnavail - (this.expectedPods - this.currentHealthy));
+    }
+  }
+
+  canDisrupt() {
+    return this.disruptionsAllowed > 0;
+  }
+
+  tick(deltaTime) {
+    super.tick(deltaTime);
+  }
+
+  getShape() { return 'shield-check'; }
+  getColor() { return '#0ea5e9'; }
+
+  toYAML() {
+    const specLines = [];
+    if (this.spec.minAvailable !== null) specLines.push(`  minAvailable: ${this.spec.minAvailable}`);
+    if (this.spec.maxUnavailable !== null) specLines.push(`  maxUnavailable: ${this.spec.maxUnavailable}`);
+    return `apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ${this.metadata.name}
+  namespace: ${this.metadata.namespace}
+  uid: ${this.uid}
+spec:
+${specLines.join('\n')}
+  selector:
+    matchLabels:
+${Object.entries(this.spec.selector.matchLabels).map(([k, v]) => `      ${k}: "${v}"`).join('\n')}
+status:
+  currentHealthy: ${this.currentHealthy}
+  desiredHealthy: ${this.desiredHealthy}
+  disruptionsAllowed: ${this.disruptionsAllowed}
+  expectedPods: ${this.expectedPods}
+  observedGeneration: ${this.observedGeneration}`;
+  }
+
+  toDescribe() {
+    const specStr = this.spec.minAvailable !== null
+      ? `Min Available:         ${this.spec.minAvailable}`
+      : `Max Unavailable:       ${this.spec.maxUnavailable}`;
+    return `Name:                  ${this.metadata.name}
+Namespace:             ${this.metadata.namespace}
+${specStr}
+Selector:              ${Object.entries(this.spec.selector.matchLabels).map(([k, v]) => `${k}=${v}`).join(', ')}
+Status:
+  Allowed Disruptions: ${this.disruptionsAllowed}
+  Current Healthy:     ${this.currentHealthy}
+  Desired Healthy:     ${this.desiredHealthy}
+  Total:               ${this.expectedPods}
+Events:
+${this.events.slice(-10).map(e => `  ${e.type}\t${e.reason}\t${e.message}`).join('\n')}`;
+  }
+}
