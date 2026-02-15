@@ -116,11 +116,11 @@
   </div>
 
   <div id="game-container">
-    <div id="objectives-panel" class="fixed top-14 left-4 z-30 w-72 rounded-xl backdrop-blur-xl bg-black/60 border border-white/10 shadow-2xl overflow-hidden transition-all duration-300" style="display:none;">
+    <div id="objectives-panel" class="fixed top-14 z-30 w-64 rounded-xl backdrop-blur-xl bg-black/60 border border-white/10 shadow-2xl overflow-hidden transition-all duration-300" style="display:none;left:76px;">
       <div class="flex items-center justify-between px-3 py-2 border-b border-white/8">
-        <div class="flex items-center gap-2">
-          <span class="text-amber-400 text-sm">&#9654;</span>
-          <span id="obj-panel-title" class="text-white/90 text-sm font-semibold truncate">Level 1</span>
+        <div class="flex items-center gap-2 min-w-0 flex-1">
+          <span class="text-amber-400 text-sm shrink-0">&#9654;</span>
+          <span id="obj-panel-title" class="flex items-center text-white/90 text-sm font-semibold min-w-0 flex-1">Level 1</span>
         </div>
         <button id="obj-panel-toggle" class="text-white/40 hover:text-white/80 text-xs transition-colors px-1">&#9660;</button>
       </div>
@@ -1051,6 +1051,10 @@
         this._initObjectivesPanel(mode);
       }
 
+      _getLevelDef() {
+        return this.modeInstance?.currentLevelDef || this.modeInstance?.currentChallengeDef || null;
+      }
+
       _initObjectivesPanel(mode) {
         const panel = document.getElementById('objectives-panel');
         if (!panel) return;
@@ -1067,10 +1071,18 @@
         document.getElementById('obj-panel-body').style.display = '';
         document.getElementById('obj-panel-toggle').innerHTML = '&#9660;';
 
+        const levelDef = this._getLevelDef();
+        const allHintsInit = levelDef?.hints || [];
         const hintBtnInit = document.getElementById('btn-show-hint');
-        const allHintsInit = this.modeInstance?.currentLevelDef?.hints || [];
-        hintBtnInit.style.display = allHintsInit.length > 0 ? '' : 'none';
-        hintBtnInit.innerHTML = `<svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM4 11a1 1 0 100-2H3a1 1 0 000 2h1zM10 18a3 3 0 01-2.83-2h5.66A3 3 0 0110 18zM13 14H7v-1a3 3 0 01.879-2.121l.707-.707A5 5 0 0010 5a5 5 0 00-1.414 0A5 5 0 005 10c0 1.38.56 2.63 1.464 3.536L7 14z"/></svg><span>Show Hint (${allHintsInit.length})</span>`;
+        const hintSection = document.getElementById('hint-section');
+        if (allHintsInit.length > 0) {
+          hintSection.style.display = '';
+          hintBtnInit.style.display = '';
+          hintBtnInit.innerHTML = `<svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM4 11a1 1 0 100-2H3a1 1 0 000 2h1zM10 18a3 3 0 01-2.83-2h5.66A3 3 0 0110 18zM13 14H7v-1a3 3 0 01.879-2.121l.707-.707A5 5 0 0010 5a5 5 0 00-1.414 0A5 5 0 005 10c0 1.38.56 2.63 1.464 3.536L7 14z"/></svg><span>Show Hint (${allHintsInit.length})</span>`;
+        } else {
+          hintSection.style.display = 'none';
+          hintBtnInit.style.display = 'none';
+        }
 
         const status = this.modeInstance?.getStatus?.();
         if (status) {
@@ -1095,7 +1107,7 @@
             div.innerHTML = `<span class="text-amber-400/50 mt-px shrink-0">&#128161;</span><span>${hint}</span>`;
             list.appendChild(div);
             this._hintIndex++;
-            const allHints = this.modeInstance.currentLevelDef?.hints || [];
+            const allHints = this._getLevelDef()?.hints || [];
             if (this._hintIndex >= allHints.length) {
               hintBtn.style.display = 'none';
             } else {
@@ -1118,8 +1130,18 @@
         const listEl = document.getElementById('obj-list');
         if (!titleEl || !status) return;
 
-        const levelDef = this.modeInstance?.currentLevelDef;
-        titleEl.textContent = `L${status.currentLevel || '?'} - ${status.levelTitle || ''}`;
+        const isChallenge = this.currentMode === 'challenge';
+        const levelDef = this._getLevelDef();
+
+        if (isChallenge) {
+          const mins = Math.floor((status.timeRemaining || 0) / 60);
+          const secs = (status.timeRemaining || 0) % 60;
+          const timeStr = `${mins}:${String(secs).padStart(2, '0')}`;
+          const urgentClass = (status.timeRemaining || 0) <= 30 ? 'text-red-400' : 'text-sky-400';
+          titleEl.innerHTML = `<span class="truncate">${status.title || 'Challenge'}</span><span class="${urgentClass} font-mono text-[11px] ml-auto pl-2 shrink-0">${timeStr}</span>`;
+        } else {
+          titleEl.textContent = `L${status.currentLevel || '?'} - ${status.levelTitle || ''}`;
+        }
         descEl.textContent = levelDef?.description || '';
 
         listEl.innerHTML = '';
@@ -1133,12 +1155,12 @@
           listEl.appendChild(div);
         }
 
-        const hintBtn = document.getElementById('btn-show-hint');
         const allHints = levelDef?.hints || [];
         if (allHints.length === 0) {
           document.getElementById('hint-section').style.display = 'none';
         } else {
           document.getElementById('hint-section').style.display = '';
+          const hintBtn = document.getElementById('btn-show-hint');
           if (this._hintIndex < allHints.length) {
             hintBtn.style.display = '';
           }
