@@ -1316,12 +1316,15 @@
     fetch('https://api.github.com/repos/rohitg00/k8sgames')
       .then(r => r.json())
       .then(data => {
+        if (typeof data.stargazers_count !== 'number') return;
+        const text = data.stargazers_count >= 1000
+          ? (data.stargazers_count / 1000).toFixed(1) + 'k'
+          : String(data.stargazers_count);
+        window._ghStars = text;
         const el = document.getElementById('github-star-count');
-        if (el && typeof data.stargazers_count === 'number') {
-          el.textContent = data.stargazers_count >= 1000
-            ? (data.stargazers_count / 1000).toFixed(1) + 'k'
-            : data.stargazers_count;
-        }
+        if (el) el.textContent = text;
+        const hud = document.getElementById('hud-github-stars');
+        if (hud) hud.textContent = text;
       })
       .catch(() => {});
   </script>
