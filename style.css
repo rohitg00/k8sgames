@@ -238,8 +238,15 @@ html, body {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  font-size: 1.5rem;
-  opacity: 0.6;
+  width: 24px;
+  height: 24px;
+  opacity: 0.4;
+  color: var(--k8s-blue);
+}
+
+.menu-btn-icon svg {
+  width: 24px;
+  height: 24px;
 }
 
 .menu-footer {
@@ -1041,12 +1048,16 @@ html, body {
   }
   #hud {
     height: 36px !important;
+    max-height: 36px !important;
     font-size: 0.6rem !important;
+    overflow: hidden !important;
   }
   #hud > div {
     gap: 0.25rem !important;
     padding: 0 0.4rem !important;
     overflow: hidden !important;
+    flex-wrap: nowrap !important;
+    white-space: nowrap !important;
   }
   #hud .text-sm, #hud .text-xs {
     font-size: 0.6rem !important;
@@ -1108,7 +1119,8 @@ html, body {
     max-width: 280px !important;
     left: 48px !important;
   }
-  #minimap-container {
+  #minimap-container,
+  #minimap {
     display: none !important;
   }
   #game-github-badge {
@@ -1149,6 +1161,20 @@ html, body {
     display: none !important;
   }
 
+  #main-menu {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    padding: 1rem !important;
+    box-sizing: border-box !important;
+    max-width: 100vw !important;
+  }
+  .menu-keyboard-hints {
+    display: none !important;
+  }
+  #menu-hints {
+    max-width: 90vw !important;
+    overflow: hidden !important;
+  }
   .menu-logo {
     font-size: 2.5rem !important;
   }
@@ -1158,10 +1184,20 @@ html, body {
   .menu-grid {
     grid-template-columns: 1fr !important;
     gap: 0.5rem !important;
-    padding: 0 1rem !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
   .menu-btn {
     padding: 1rem !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .menu-btn-icon {
+    font-size: 1.2rem !important;
+    top: 0.75rem !important;
+    right: 0.75rem !important;
   }
   .menu-footer {
     font-size: 0.6rem !important;
@@ -1276,9 +1312,20 @@ html, body {
   }
   .menu-grid {
     gap: 0.4rem !important;
+    width: 100% !important;
   }
   .menu-btn {
     padding: 0.75rem !important;
+  }
+  .menu-btn-icon {
+    width: 18px !important;
+    height: 18px !important;
+    top: 0.5rem !important;
+    right: 0.5rem !important;
+  }
+  .menu-btn-icon svg {
+    width: 18px !important;
+    height: 18px !important;
   }
   .menu-btn-title {
     font-size: 0.9rem !important;
@@ -1320,7 +1367,8 @@ html, body {
   #objectives-panel {
     max-height: 50vh !important;
   }
-  #minimap-container {
+  #minimap-container,
+  #minimap {
     display: none !important;
   }
 }

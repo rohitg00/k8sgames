@@ -75,22 +75,22 @@
 
     <div class="menu-grid">
       <button class="menu-btn" data-mode="campaign">
-        <span class="menu-btn-icon">&#9654;</span>
+        <span class="menu-btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg></span>
         <div class="menu-btn-title">Campaign</div>
         <div class="menu-btn-desc">20 levels from pods to production. Learn K8s step by step.</div>
       </button>
       <button class="menu-btn" data-mode="chaos">
-        <span class="menu-btn-icon">&#9889;</span>
+        <span class="menu-btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
         <div class="menu-btn-title">Chaos Mode</div>
         <div class="menu-btn-desc">Survive escalating incidents. SRE training at its finest.</div>
       </button>
       <button class="menu-btn" data-mode="sandbox">
-        <span class="menu-btn-icon">&#9881;</span>
+        <span class="menu-btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
         <div class="menu-btn-title">Sandbox</div>
         <div class="menu-btn-desc">Free cluster management. Design, build, get scored.</div>
       </button>
       <button class="menu-btn" data-mode="challenge">
-        <span class="menu-btn-icon">&#9201;</span>
+        <span class="menu-btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
         <div class="menu-btn-title">Challenges</div>
         <div class="menu-btn-desc">10 timed scenarios. Fix outages, deploy apps, race the clock.</div>
       </button>
@@ -102,8 +102,8 @@
       <button class="menu-footer-btn" id="btn-stats">Stats</button>
     </div>
 
-    <div style="margin-top: 2rem; text-align: center;">
-      <div style="font-size: 0.7rem; color: var(--text-muted);">
+    <div id="menu-hints" style="margin-top: 2rem; text-align: center; max-width: 100%; overflow: hidden;">
+      <div class="menu-keyboard-hints" style="font-size: 0.7rem; color: var(--text-muted);">
         Press <span class="keyboard-hint">/</span> for kubectl &middot;
         <span class="keyboard-hint">Space</span> pause &middot;
         <span class="keyboard-hint">M</span> metrics &middot;
