@@ -253,6 +253,10 @@ export class ResourceBase {
     return this;
   }
 
+  setStatus(status) {
+    return this.setPhase(status);
+  }
+
   updateSpec(partialSpec) {
     Object.assign(this.spec, partialSpec);
     this.metadata.generation++;

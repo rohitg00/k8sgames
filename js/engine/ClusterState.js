@@ -227,6 +227,18 @@ export class ClusterState {
     return results;
   }
 
+  getResourcesByKind(kind) {
+    return this.getByKind(kind);
+  }
+
+  getAllResources() {
+    return Array.from(this.resources.values());
+  }
+
+  getResource(uid) {
+    return this.resources.get(uid) || null;
+  }
+
   getByNamespace(namespace) {
     const uids = this.namespaceIndex.get(namespace);
     if (!uids) return [];
