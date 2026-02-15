@@ -25,12 +25,17 @@ class ChaosMode {
     this.gameEngine = gameEngine;
     this.incidentEngine = incidentEngine;
     this.scoringEngine = scoringEngine;
+    this.ticker = null;
+    this.pauseStart = 0;
+    this.gameOverThreshold = 0;
+    this.resetState();
+  }
+
+  resetState() {
     this.state = CHAOS_STATE.IDLE;
     this.survivalTime = 0;
     this.startTime = 0;
     this.pausedTime = 0;
-    this.pauseStart = 0;
-    this.ticker = null;
     this.chaosBudget = 1;
     this.difficultyLevel = 1;
     this.totalXP = 0;
@@ -38,7 +43,6 @@ class ChaosMode {
     this.highestCombo = 0;
     this.clusterHealth = 100;
     this.healthDecayRate = 0;
-    this.gameOverThreshold = 0;
     this.waveNumber = 0;
     this.waveIncidentCount = 0;
     this.waveCooldown = false;
@@ -46,21 +50,9 @@ class ChaosMode {
   }
 
   start() {
+    this.resetState();
     this.state = CHAOS_STATE.PLAYING;
-    this.survivalTime = 0;
     this.startTime = Date.now();
-    this.pausedTime = 0;
-    this.chaosBudget = 1;
-    this.difficultyLevel = 1;
-    this.totalXP = 0;
-    this.incidentsResolved = 0;
-    this.highestCombo = 0;
-    this.clusterHealth = 100;
-    this.healthDecayRate = 0;
-    this.waveNumber = 0;
-    this.waveIncidentCount = 0;
-    this.waveCooldown = false;
-    this.waveCooldownTimer = 0;
 
     this.setupCluster();
     this.incidentEngine.reset();
@@ -85,23 +77,14 @@ class ChaosMode {
 
     clusterState.clear();
 
-    for (const node of INITIAL_CLUSTER.nodes) {
+    const allResources = [...INITIAL_CLUSTER.nodes, ...INITIAL_CLUSTER.workloads];
+    for (const resource of allResources) {
       clusterState.addResource({
-        kind: node.kind,
-        name: node.name,
-        metadata: { name: node.name, namespace: 'default', labels: {} },
-        spec: node.spec,
-        status: { phase: 'Running' }
-      });
-    }
-
-    for (const workload of INITIAL_CLUSTER.workloads) {
-      clusterState.addResource({
-        kind: workload.kind,
-        name: workload.name,
-        metadata: { name: workload.name, namespace: 'default', labels: {} },
-        spec: workload.spec,
-        status: { phase: 'Running' }
+        kind: resource.kind,
+        name: resource.name,
+        metadata: { name: resource.name, namespace: 'default', labels: {} },
+        spec: resource.spec,
+        status: { phase: 'Running' },
       });
     }
   }
@@ -188,10 +171,7 @@ class ChaosMode {
   onIncidentResolved(data) {
     this.incidentsResolved++;
     this.totalXP += data.xpEarned || 0;
-
-    if (data.combo > this.highestCombo) {
-      this.highestCombo = data.combo;
-    }
+    this.highestCombo = Math.max(this.highestCombo, data.combo);
 
     const healthBonus = Math.min(10, data.severity * 2);
     this.clusterHealth = Math.min(100, this.clusterHealth + healthBonus);

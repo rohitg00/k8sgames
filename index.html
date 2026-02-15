@@ -572,7 +572,8 @@
 
         document.getElementById('game-over-retry').addEventListener('click', () => {
           document.getElementById('modal-game-over').classList.remove('active');
-          if (this.modeInstance && this.modeInstance.restart) {
+          const canRestart = this.modeInstance && this.modeInstance.restart;
+          if (canRestart) {
             this.modeInstance.restart();
           } else {
             this.startMode(this.currentMode);
@@ -633,17 +634,7 @@
               if (this.metrics) this.metrics.toggle();
               break;
             case 'Escape':
-              if (document.getElementById('settings-panel').classList.contains('active')) {
-                document.getElementById('settings-panel').classList.remove('active');
-              } else if (document.getElementById('achievements-panel').classList.contains('active')) {
-                document.getElementById('achievements-panel').classList.remove('active');
-              } else if (document.getElementById('stats-panel').classList.contains('active')) {
-                document.getElementById('stats-panel').classList.remove('active');
-              } else if (this.inspector && this.inspector.visible) {
-                this.inspector.hide();
-              } else if (this.currentMode) {
-                this.returnToMenu();
-              }
+              this.handleEscape();
               break;
             case 'Delete':
             case 'Backspace':
@@ -663,6 +654,26 @@
             case '9': this.selectPaletteResource('Namespace'); break;
           }
         });
+      }
+
+      handleEscape() {
+        const panels = ['settings-panel', 'achievements-panel', 'stats-panel'];
+        for (const panelId of panels) {
+          const panel = document.getElementById(panelId);
+          if (panel.classList.contains('active')) {
+            panel.classList.remove('active');
+            return;
+          }
+        }
+
+        if (this.inspector && this.inspector.visible) {
+          this.inspector.hide();
+          return;
+        }
+
+        if (this.currentMode) {
+          this.returnToMenu();
+        }
       }
 
       selectPaletteResource(kind) {
@@ -766,19 +777,18 @@
       startMode(mode) {
         this.currentMode = mode;
 
-        if (mode === 'campaign') {
-          this.buildLevelSelect();
-          document.getElementById('level-select').classList.add('active');
-          return;
+        switch (mode) {
+          case 'campaign':
+            this.buildLevelSelect();
+            document.getElementById('level-select').classList.add('active');
+            return;
+          case 'challenge':
+            this.buildChallengeSelect();
+            document.getElementById('challenge-select').classList.add('active');
+            return;
+          default:
+            this.launchGame(mode);
         }
-
-        if (mode === 'challenge') {
-          this.buildChallengeSelect();
-          document.getElementById('challenge-select').classList.add('active');
-          return;
-        }
-
-        this.launchGame(mode);
       }
 
       launchGame(mode, levelOrChallenge) {
@@ -802,18 +812,23 @@
 
         this.applySettings();
 
-        if (mode === 'campaign') {
-          this.modeInstance = new CampaignMode(this.engine, this.incidentEngine, this.scoringEngine);
-          this.modeInstance.startLevel(levelOrChallenge || 1);
-        } else if (mode === 'chaos') {
-          this.modeInstance = new ChaosMode(this.engine, this.incidentEngine, this.scoringEngine);
-          this.modeInstance.start();
-        } else if (mode === 'sandbox') {
-          this.modeInstance = new SandboxMode(this.engine, this.scoringEngine);
-          this.modeInstance.start();
-        } else if (mode === 'challenge') {
-          this.modeInstance = new ChallengeMode(this.engine, this.incidentEngine, this.scoringEngine);
-          this.modeInstance.startChallenge(levelOrChallenge || 1);
+        switch (mode) {
+          case 'campaign':
+            this.modeInstance = new CampaignMode(this.engine, this.incidentEngine, this.scoringEngine);
+            this.modeInstance.startLevel(levelOrChallenge || 1);
+            break;
+          case 'chaos':
+            this.modeInstance = new ChaosMode(this.engine, this.incidentEngine, this.scoringEngine);
+            this.modeInstance.start();
+            break;
+          case 'sandbox':
+            this.modeInstance = new SandboxMode(this.engine, this.scoringEngine);
+            this.modeInstance.start();
+            break;
+          case 'challenge':
+            this.modeInstance = new ChallengeMode(this.engine, this.incidentEngine, this.scoringEngine);
+            this.modeInstance.startChallenge(levelOrChallenge || 1);
+            break;
         }
 
         this.renderer.start();
@@ -995,9 +1010,16 @@
       }
 
       formatTime(seconds) {
-        if (seconds < 60) return `${Math.floor(seconds)}s`;
-        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
-        return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+        const s = Math.floor(seconds);
+        if (s < 60) return `${s}s`;
+
+        const minutes = Math.floor(s / 60);
+        const remainderSeconds = s % 60;
+        if (s < 3600) return `${minutes}m ${remainderSeconds}s`;
+
+        const hours = Math.floor(s / 3600);
+        const remainderMinutes = Math.floor((s % 3600) / 60);
+        return `${hours}h ${remainderMinutes}m`;
       }
     }
 

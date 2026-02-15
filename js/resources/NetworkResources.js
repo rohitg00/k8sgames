@@ -14,18 +14,14 @@ export class Service extends ResourceBase {
       nodePort: null
     };
 
-    if (this.spec.type === 'NodePort') {
+    if (this.spec.type === 'NodePort' || this.spec.type === 'LoadBalancer') {
       this.spec.ports = this.spec.ports.map(p => ({
         ...p,
-        nodePort: p.nodePort || (30000 + Math.floor(Math.random() * 2767))
+        nodePort: p.nodePort || (30000 + Math.floor(Math.random() * 2767)),
       }));
     }
 
     if (this.spec.type === 'LoadBalancer') {
-      this.spec.ports = this.spec.ports.map(p => ({
-        ...p,
-        nodePort: p.nodePort || (30000 + Math.floor(Math.random() * 2767))
-      }));
       this.loadBalancerPending = true;
       this.loadBalancerTimer = 0;
     }
@@ -127,19 +123,32 @@ ${statusSection}`;
       ? (this.spec.loadBalancerIP || '<pending>')
       : '<none>';
 
-    return `Name:              ${this.metadata.name}
-Namespace:         ${this.metadata.namespace}
-Labels:            ${Object.entries(this.metadata.labels).map(([k, v]) => `${k}=${v}`).join(', ')}
-Selector:          ${Object.entries(this.spec.selector).map(([k, v]) => `${k}=${v}`).join(',')}
-Type:              ${this.spec.type}
-IP:                ${this.spec.clusterIP}
-External IP:       ${externalIP}
-Port:              ${this.spec.ports.map(p => `${p.name} ${p.port}/${p.protocol}`).join(', ')}
-TargetPort:        ${this.spec.ports.map(p => `${p.targetPort}/${p.protocol}`).join(', ')}
-${this.spec.ports[0]?.nodePort ? `NodePort:          ${this.spec.ports.map(p => `${p.name} ${p.nodePort}/${p.protocol}`).join(', ')}\n` : ''}Endpoints:         ${this.endpoints.map(e => `${e.ip}:${this.spec.ports[0].targetPort}`).join(', ') || '<none>'}
-Session Affinity:  ${this.spec.sessionAffinity}
-Events:
-${this.events.slice(-10).map(e => `  ${e.type}\t${e.reason}\t${e.message}`).join('\n')}`;
+    const endpointsList = this.endpoints.map(e => `${e.ip}:${this.spec.ports[0].targetPort}`).join(', ') || '<none>';
+
+    const lines = [
+      `Name:              ${this.metadata.name}`,
+      `Namespace:         ${this.metadata.namespace}`,
+      `Labels:            ${Object.entries(this.metadata.labels).map(([k, v]) => `${k}=${v}`).join(', ')}`,
+      `Selector:          ${Object.entries(this.spec.selector).map(([k, v]) => `${k}=${v}`).join(',')}`,
+      `Type:              ${this.spec.type}`,
+      `IP:                ${this.spec.clusterIP}`,
+      `External IP:       ${externalIP}`,
+      `Port:              ${this.spec.ports.map(p => `${p.name} ${p.port}/${p.protocol}`).join(', ')}`,
+      `TargetPort:        ${this.spec.ports.map(p => `${p.targetPort}/${p.protocol}`).join(', ')}`,
+    ];
+
+    if (this.spec.ports[0]?.nodePort) {
+      lines.push(`NodePort:          ${this.spec.ports.map(p => `${p.name} ${p.nodePort}/${p.protocol}`).join(', ')}`);
+    }
+
+    lines.push(
+      `Endpoints:         ${endpointsList}`,
+      `Session Affinity:  ${this.spec.sessionAffinity}`,
+      `Events:`,
+      ...this.events.slice(-10).map(e => `  ${e.type}\t${e.reason}\t${e.message}`),
+    );
+
+    return lines.join('\n');
   }
 }
 
@@ -366,9 +375,8 @@ export class NetworkPolicy extends ResourceBase {
   getShape() { return 'shield'; }
 
   getColor() {
-    return this.spec.policyTypes.includes('Ingress') && this.spec.policyTypes.includes('Egress')
-      ? '#ef4444'
-      : '#22c55e';
+    const hasBoth = this.spec.policyTypes.includes('Ingress') && this.spec.policyTypes.includes('Egress');
+    return hasBoth ? '#ef4444' : '#22c55e';
   }
 
   toYAML() {

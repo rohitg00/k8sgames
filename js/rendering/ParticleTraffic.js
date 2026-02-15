@@ -173,21 +173,18 @@ export class ParticleTrafficSystem {
         }
     }
 
-    _buildCurve(route) {
-        let start, end;
+    _toVector3(pos) {
+        if (pos instanceof THREE.Vector3) return pos;
+        return new THREE.Vector3(pos.x, pos.y, pos.z);
+    }
 
-        if (route.sourcePos && route.targetPos) {
-            start = route.sourcePos instanceof THREE.Vector3
-                ? route.sourcePos
-                : new THREE.Vector3(route.sourcePos.x, route.sourcePos.y, route.sourcePos.z);
-            end = route.targetPos instanceof THREE.Vector3
-                ? route.targetPos
-                : new THREE.Vector3(route.targetPos.x, route.targetPos.y, route.targetPos.z);
-        } else if (route.curve) {
-            return route.curve;
-        } else {
-            return null;
+    _buildCurve(route) {
+        if (!route.sourcePos || !route.targetPos) {
+            return route.curve || null;
         }
+
+        const start = this._toVector3(route.sourcePos);
+        const end = this._toVector3(route.targetPos);
 
         const mid = new THREE.Vector3().lerpVectors(start, end, 0.5);
         const dist = start.distanceTo(end);

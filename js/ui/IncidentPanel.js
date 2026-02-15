@@ -172,6 +172,12 @@ export class IncidentPanel {
     this._renderList();
   }
 
+  _emptyMessage() {
+    if (this.filter === 'active') return 'No active incidents';
+    if (this.filter === 'resolved') return 'No resolved incidents';
+    return 'No incidents recorded';
+  }
+
   _getFilteredIncidents() {
     if (this.filter === 'active') return this.incidents.filter(i => i.status === 'active');
     if (this.filter === 'resolved') return this.incidents.filter(i => i.status === 'resolved');
@@ -185,7 +191,7 @@ export class IncidentPanel {
     document.getElementById('incident-count').textContent = this._getActiveCount();
 
     if (filtered.length === 0) {
-      list.innerHTML = `<div class="text-white/20 text-sm text-center mt-8">${this.filter === 'active' ? 'No active incidents' : this.filter === 'resolved' ? 'No resolved incidents' : 'No incidents recorded'}</div>`;
+      list.innerHTML = `<div class="text-white/20 text-sm text-center mt-8">${this._emptyMessage()}</div>`;
       return;
     }
 
@@ -287,11 +293,12 @@ export class IncidentPanel {
   _getStarRating(incident) {
     if (incident.status !== 'resolved' || !incident.resolvedAt) return '';
     const elapsed = (incident.resolvedAt - incident.timestamp) / 1000;
-    let stars;
+    let stars = 1;
     if (elapsed < 30) stars = 3;
     else if (elapsed < 60) stars = 2;
-    else stars = 1;
-    return '<span class="text-amber-400">' + '\u2605'.repeat(stars) + '</span>' + '<span class="text-white/10">' + '\u2605'.repeat(3 - stars) + '</span>';
+    const filled = '\u2605'.repeat(stars);
+    const empty = '\u2605'.repeat(3 - stars);
+    return `<span class="text-amber-400">${filled}</span><span class="text-white/10">${empty}</span>`;
   }
 
   _formatElapsed(ms) {

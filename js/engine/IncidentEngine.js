@@ -115,16 +115,19 @@ class IncidentEngine {
     for (let level = 1; level <= 10; level++) {
       const maxSeverity = Math.min(5, Math.ceil(level / 2));
       const eligible = INCIDENT_DEFS.filter((d) => d.severity <= maxSeverity);
-      const totalWeight = eligible.reduce((sum, d) => {
-        const w = level >= d.severity * 2 ? 3 : level >= d.severity ? 2 : 1;
-        return sum + w;
-      }, 0);
-      weights.set(level, eligible.map((d) => {
-        const w = level >= d.severity * 2 ? 3 : level >= d.severity ? 2 : 1;
-        return { def: d, weight: w / totalWeight };
-      }));
+      const totalWeight = eligible.reduce((sum, d) => sum + this._incidentWeight(level, d), 0);
+      weights.set(level, eligible.map((d) => ({
+        def: d,
+        weight: this._incidentWeight(level, d) / totalWeight,
+      })));
     }
     return weights;
+  }
+
+  _incidentWeight(level, def) {
+    if (level >= def.severity * 2) return 3;
+    if (level >= def.severity) return 2;
+    return 1;
   }
 
   loadScriptedIncidents(incidents) {
@@ -355,7 +358,7 @@ class IncidentEngine {
 
     this.gameEngine.emit('incident:step-completed', {
       id: incident.id,
-      stepIndex: stepIndex,
+      stepIndex,
       progress: incident.investigationProgress
     });
 
@@ -393,9 +396,9 @@ class IncidentEngine {
       id: incident.id,
       name: incident.name,
       severity: incident.severity,
-      resolutionTime: resolutionTime,
+      resolutionTime,
       action: actionId,
-      xpEarned: xpEarned,
+      xpEarned,
       combo: this.comboCount,
       cascadeChildrenRemaining: cascadeChildren.length
     });

@@ -181,11 +181,7 @@ export class ConnectionLineManager {
             const isRelated = entry.connection.sourceId === resourceId ||
                               entry.connection.targetId === resourceId;
             entry.line.material.opacity = isRelated ? MAX_OPACITY : MIN_OPACITY * 0.5;
-            if (isRelated) {
-                entry.line.userData.flowSpeed = FLOW_SPEED * 2;
-            } else {
-                entry.line.userData.flowSpeed = FLOW_SPEED * 0.5;
-            }
+            entry.line.userData.flowSpeed = FLOW_SPEED * (isRelated ? 2 : 0.5);
         }
     }
 

@@ -804,26 +804,17 @@ export class SimulationTick {
       }
     }
 
-    if (this.chaosConfig.cpuStress > 0) {
+    if (this.chaosConfig.cpuStress > 0 || this.chaosConfig.memoryStress > 0) {
       const pods = this.cluster.getByKind('Pod').filter(
         (p) => p.status.phase === 'Running' && p.status.containerStatuses
       );
       for (const pod of pods) {
         for (const cs of pod.status.containerStatuses) {
-          if (cs.state.running) {
+          if (!cs.state.running) continue;
+          if (this.chaosConfig.cpuStress > 0) {
             cs.resources.cpu += cs.resources.cpuRequest * this.chaosConfig.cpuStress;
           }
-        }
-      }
-    }
-
-    if (this.chaosConfig.memoryStress > 0) {
-      const pods = this.cluster.getByKind('Pod').filter(
-        (p) => p.status.phase === 'Running' && p.status.containerStatuses
-      );
-      for (const pod of pods) {
-        for (const cs of pod.status.containerStatuses) {
-          if (cs.state.running) {
+          if (this.chaosConfig.memoryStress > 0) {
             cs.resources.memory += cs.resources.memoryRequest * this.chaosConfig.memoryStress;
           }
         }
@@ -832,7 +823,6 @@ export class SimulationTick {
   }
 
   _createPodForWorkload(parent, templateSource, nameOverride) {
-    const { ResourceBase } = this._getResourceBaseSync();
     const podName = nameOverride || `${parent.name}-${this._randomSuffix()}`;
     const pod = new ResourceBase('Pod', 'v1', podName, parent.namespace);
 
@@ -858,10 +848,6 @@ export class SimulationTick {
     this.cluster.addRelationship(parent.uid, pod.uid);
 
     return pod;
-  }
-
-  _getResourceBaseSync() {
-    return { ResourceBase: ResourceBase };
   }
 
   _recordMetrics() {

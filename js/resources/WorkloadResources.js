@@ -3,12 +3,20 @@ import { ResourceBase } from './ResourceBase.js';
 export class Pod extends ResourceBase {
   constructor(metadata = {}) {
     super('Pod', metadata);
+    const defaultContainer = {
+      name: 'main',
+      image: 'nginx:latest',
+      resources: {
+        requests: { cpu: '100m', memory: '128Mi' },
+        limits: { cpu: '500m', memory: '256Mi' },
+      },
+    };
     this.spec = {
-      containers: metadata.containers || [{ name: 'main', image: 'nginx:latest', resources: { requests: { cpu: '100m', memory: '128Mi' }, limits: { cpu: '500m', memory: '256Mi' } } }],
+      containers: metadata.containers || [defaultContainer],
       restartPolicy: metadata.restartPolicy || 'Always',
       nodeName: metadata.nodeName || null,
       serviceAccountName: metadata.serviceAccountName || 'default',
-      terminationGracePeriodSeconds: 30
+      terminationGracePeriodSeconds: 30,
     };
     this.phase = 'Pending';
     this.conditions = [];
@@ -126,11 +134,12 @@ export class Pod extends ResourceBase {
 
   _triggerOOMKill() {
     this.oomKillCount++;
+    const finishedAt = new Date().toISOString();
     this.containerStatuses.forEach(cs => {
       cs.restartCount++;
       cs.ready = false;
       cs.started = false;
-      cs.lastState = { terminated: { exitCode: 137, reason: 'OOMKilled', finishedAt: new Date().toISOString() } };
+      cs.lastState = { terminated: { exitCode: 137, reason: 'OOMKilled', finishedAt } };
       cs.state = { waiting: { reason: 'CrashLoopBackOff' } };
     });
     this.addEvent('Warning', 'OOMKilled', `Container ${this.spec.containers[0].name} was OOM killed`);
@@ -140,11 +149,12 @@ export class Pod extends ResourceBase {
   }
 
   triggerCrash(reason = 'Error', exitCode = 1) {
+    const finishedAt = new Date().toISOString();
     this.containerStatuses.forEach(cs => {
       cs.restartCount++;
       cs.ready = false;
       cs.started = false;
-      cs.lastState = { terminated: { exitCode, reason, finishedAt: new Date().toISOString() } };
+      cs.lastState = { terminated: { exitCode, reason, finishedAt } };
       cs.state = { waiting: { reason: 'CrashLoopBackOff' } };
     });
     this.addEvent('Warning', 'BackOff', `Back-off restarting failed container ${this.spec.containers[0].name}`);
@@ -163,11 +173,14 @@ export class Pod extends ResourceBase {
   }
 
   terminate(reason = 'Terminated') {
-    this.phase = reason === 'Completed' ? 'Succeeded' : 'Failed';
+    const isCompleted = reason === 'Completed';
+    this.phase = isCompleted ? 'Succeeded' : 'Failed';
+    const exitCode = isCompleted ? 0 : 1;
+    const finishedAt = new Date().toISOString();
     this.containerStatuses.forEach(cs => {
       cs.ready = false;
       cs.started = false;
-      cs.state = { terminated: { exitCode: reason === 'Completed' ? 0 : 1, reason, finishedAt: new Date().toISOString() } };
+      cs.state = { terminated: { exitCode, reason, finishedAt } };
     });
     this.setStatus(this.phase);
     this.addEvent('Normal', 'Killing', `Stopping container ${this.spec.containers[0].name}`);
@@ -237,21 +250,30 @@ ${this.events.slice(-10).map(e => `  ${e.type}\t${e.reason}\t${e.message}`).join
 export class Deployment extends ResourceBase {
   constructor(metadata = {}) {
     super('Deployment', metadata);
+    const matchLabels = metadata.matchLabels || { app: metadata.name };
+    const defaultContainer = {
+      name: 'main',
+      image: 'nginx:latest',
+      resources: {
+        requests: { cpu: '100m', memory: '128Mi' },
+        limits: { cpu: '500m', memory: '256Mi' },
+      },
+    };
     this.spec = {
       replicas: metadata.replicas || 3,
-      selector: { matchLabels: metadata.matchLabels || { app: metadata.name } },
+      selector: { matchLabels },
       strategy: {
         type: metadata.strategyType || 'RollingUpdate',
         rollingUpdate: {
           maxSurge: metadata.maxSurge || 1,
-          maxUnavailable: metadata.maxUnavailable || 0
-        }
+          maxUnavailable: metadata.maxUnavailable || 0,
+        },
       },
       template: {
-        metadata: { labels: metadata.matchLabels || { app: metadata.name } },
-        spec: { containers: metadata.containers || [{ name: 'main', image: 'nginx:latest', resources: { requests: { cpu: '100m', memory: '128Mi' }, limits: { cpu: '500m', memory: '256Mi' } } }] }
+        metadata: { labels: matchLabels },
+        spec: { containers: metadata.containers || [defaultContainer] },
       },
-      revisionHistoryLimit: 10
+      revisionHistoryLimit: 10,
     };
     this.replicaSets = [];
     this.revision = 1;
@@ -485,9 +507,13 @@ export class StatefulSet extends ResourceBase {
       template: {
         spec: { containers: metadata.containers || [{ name: 'main', image: 'postgres:15' }] }
       },
-      volumeClaimTemplates: metadata.volumeClaimTemplates || [
-        { metadata: { name: 'data' }, spec: { accessModes: ['ReadWriteOnce'], resources: { requests: { storage: '10Gi' } } } }
-      ]
+      volumeClaimTemplates: metadata.volumeClaimTemplates || [{
+        metadata: { name: 'data' },
+        spec: {
+          accessModes: ['ReadWriteOnce'],
+          resources: { requests: { storage: '10Gi' } },
+        },
+      }]
     };
     this.pods = [];
     this.readyReplicas = 0;

@@ -98,35 +98,20 @@ class ScoringEngine {
       this.sessionStats.resourceTypesUsed.size
     );
 
-    switch (kind) {
-      case 'Pod':
-        this.sessionStats.totalPodsDeployed++;
-        this.progress.stats.totalPodsDeployed = (this.progress.stats.totalPodsDeployed || 0) + 1;
-        break;
-      case 'Deployment':
-        this.sessionStats.deploymentsCreated++;
-        this.progress.stats.deploymentsCreated = (this.progress.stats.deploymentsCreated || 0) + 1;
-        break;
-      case 'Service':
-        this.sessionStats.servicesCreated++;
-        this.progress.stats.servicesCreated = (this.progress.stats.servicesCreated || 0) + 1;
-        break;
-      case 'Namespace':
-        this.sessionStats.namespacesCreated++;
-        this.progress.stats.namespacesCreated = (this.progress.stats.namespacesCreated || 0) + 1;
-        break;
-      case 'NetworkPolicy':
-        this.sessionStats.networkPoliciesCreated++;
-        this.progress.stats.networkPoliciesCreated = (this.progress.stats.networkPoliciesCreated || 0) + 1;
-        break;
-      case 'PersistentVolumeClaim':
-        this.sessionStats.pvcsCreated++;
-        this.progress.stats.pvcsCreated = (this.progress.stats.pvcsCreated || 0) + 1;
-        break;
-      case 'HorizontalPodAutoscaler':
-        this.sessionStats.hpasCreated++;
-        this.progress.stats.hpasCreated = (this.progress.stats.hpasCreated || 0) + 1;
-        break;
+    const kindToStat = {
+      Pod: 'totalPodsDeployed',
+      Deployment: 'deploymentsCreated',
+      Service: 'servicesCreated',
+      Namespace: 'namespacesCreated',
+      NetworkPolicy: 'networkPoliciesCreated',
+      PersistentVolumeClaim: 'pvcsCreated',
+      HorizontalPodAutoscaler: 'hpasCreated',
+    };
+
+    const statKey = kindToStat[kind];
+    if (statKey) {
+      this.sessionStats[statKey]++;
+      this.progress.stats[statKey] = (this.progress.stats[statKey] || 0) + 1;
     }
 
     if (data.concurrentPods) {
@@ -673,7 +658,6 @@ class ScoringEngine {
           });
         }
       } catch (e) {
-        // skip broken conditions
       }
     }
 
@@ -721,7 +705,6 @@ class ScoringEngine {
         };
       }
     } catch (e) {
-      // fall through to defaults
     }
     return {
       xp: 0,
@@ -744,7 +727,6 @@ class ScoringEngine {
         challengeProgress: this.progress.challengeProgress
       }));
     } catch (e) {
-      // localStorage unavailable
     }
   }
 

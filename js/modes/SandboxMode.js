@@ -94,26 +94,26 @@ class SandboxMode {
     if (!ALL_RESOURCE_TYPES.includes(kind)) return false;
 
     const resource = {
-      kind: kind,
-      name: name,
+      kind,
+      name,
       metadata: {
-        name: name,
+        name,
         namespace: spec?.namespace || 'default',
-        labels: spec?.labels || {}
+        labels: spec?.labels || {},
       },
       spec: spec || {},
-      status: { phase: 'Running' }
+      status: { phase: 'Running' },
     };
 
     state.addResource(resource);
     this.resourceCount++;
 
     this.gameEngine.emit('resource:created', {
-      kind: kind,
-      name: name,
+      kind,
+      name,
       mode: 'sandbox',
       concurrentPods: kind === 'Pod' ? (state.getResourcesByKind('Pod') || []).length : undefined,
-      nodeCount: kind === 'Node' ? (state.getResourcesByKind('Node') || []).length : undefined
+      nodeCount: kind === 'Node' ? (state.getResourcesByKind('Node') || []).length : undefined,
     });
 
     return true;
@@ -208,17 +208,12 @@ class SandboxMode {
 
   cleanSpec(spec) {
     if (!spec) return {};
-    const cleaned = {};
-    for (const [key, value] of Object.entries(spec)) {
-      if (key === 'status') continue;
-      if (value === null || value === undefined) continue;
-      cleaned[key] = value;
-    }
-    return cleaned;
+    return Object.fromEntries(
+      Object.entries(spec).filter(([key, value]) => key !== 'status' && value != null)
+    );
   }
 
-  toYAML(obj, indent) {
-    indent = indent || 0;
+  toYAML(obj, indent = 0) {
     const pad = '  '.repeat(indent);
     let result = '';
 

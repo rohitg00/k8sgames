@@ -228,8 +228,7 @@ export class ClusterState {
   }
 
   getByNamespace(namespace) {
-    const key = namespace;
-    const uids = this.namespaceIndex.get(key);
+    const uids = this.namespaceIndex.get(namespace);
     if (!uids) return [];
     const results = [];
     for (const uid of uids) {

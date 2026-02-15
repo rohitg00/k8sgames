@@ -222,8 +222,8 @@ export class HUD {
     this.elements['hud-mem-bar'].style.width = `${memPct}%`;
     this.elements['hud-mem-text'].textContent = `${memPct}%`;
 
-    this.elements['hud-cpu-bar'].className = `h-full rounded-full transition-all duration-500 ${cpuPct > 80 ? 'bg-red-400' : cpuPct > 60 ? 'bg-yellow-400' : 'bg-blue-400'}`;
-    this.elements['hud-mem-bar'].className = `h-full rounded-full transition-all duration-500 ${memPct > 80 ? 'bg-red-400' : memPct > 60 ? 'bg-yellow-400' : 'bg-purple-400'}`;
+    this.elements['hud-cpu-bar'].className = `h-full rounded-full transition-all duration-500 ${this._metricBarColor(cpuPct, 'bg-blue-400')}`;
+    this.elements['hud-mem-bar'].className = `h-full rounded-full transition-all duration-500 ${this._metricBarColor(memPct, 'bg-purple-400')}`;
   }
 
   _updateTimer() {
@@ -270,6 +270,12 @@ export class HUD {
     this._updateAlertBadge();
     this._updateXP();
     this._updateMode(state);
+  }
+
+  _metricBarColor(pct, normalColor) {
+    if (pct > 80) return 'bg-red-400';
+    if (pct > 60) return 'bg-yellow-400';
+    return normalColor;
   }
 
   _updateMode(state) {

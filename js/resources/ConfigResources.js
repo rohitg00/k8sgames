@@ -136,9 +136,16 @@ export class Secret extends ResourceBase {
     }
 
     if (this.type === 'kubernetes.io/dockerconfigjson' && !this.data['.dockerconfigjson']) {
-      this.data['.dockerconfigjson'] = btoa(JSON.stringify({
-        auths: { 'registry.example.com': { username: 'user', password: '***', auth: btoa('user:***') } }
-      }));
+      const dockerConfig = {
+        auths: {
+          'registry.example.com': {
+            username: 'user',
+            password: '***',
+            auth: btoa('user:***'),
+          },
+        },
+      };
+      this.data['.dockerconfigjson'] = btoa(JSON.stringify(dockerConfig));
     }
 
     this.setStatus('Active');

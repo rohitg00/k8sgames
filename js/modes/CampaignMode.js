@@ -39,6 +39,11 @@ class CampaignMode {
       const previousCompleted = level.id === 1 ||
         (progress.campaignProgress[level.id - 1]?.completed);
 
+      const locked = !previousCompleted;
+      const completed = levelProgress?.completed || false;
+      const stars = levelProgress?.stars || 0;
+      const bestTime = levelProgress?.bestTime || null;
+
       return {
         id: level.id,
         title: level.title,
@@ -46,10 +51,10 @@ class CampaignMode {
         chapterName: level.chapterName,
         description: level.description,
         objectives: level.objectives,
-        locked: !previousCompleted,
-        completed: levelProgress?.completed || false,
-        stars: levelProgress?.stars || 0,
-        bestTime: levelProgress?.bestTime || null
+        locked,
+        completed,
+        stars,
+        bestTime,
       };
     });
   }
@@ -62,14 +67,18 @@ class CampaignMode {
         return { id: lid, completed: lp?.completed || false, stars: lp?.stars || 0 };
       });
 
+      const totalStars = levels.reduce((sum, l) => sum + l.stars, 0);
+      const maxStars = levels.length * 3;
+      const completed = levels.every((l) => l.completed);
+
       return {
         id: chapter.id,
         name: chapter.name,
         description: chapter.description,
-        levels: levels,
-        totalStars: levels.reduce((sum, l) => sum + l.stars, 0),
-        maxStars: levels.length * 3,
-        completed: levels.every((l) => l.completed)
+        levels,
+        totalStars,
+        maxStars,
+        completed,
       };
     });
   }
@@ -117,14 +126,16 @@ class CampaignMode {
 
     this.ticker = setInterval(() => this.update(), 1000);
 
+    const objectives = this.objectiveProgress;
+
     this.gameEngine.emit('campaign:level-started', {
       levelId: levelDef.id,
       title: levelDef.title,
       chapter: levelDef.chapter,
       chapterName: levelDef.chapterName,
-      objectives: this.objectiveProgress,
+      objectives,
       availableResources: levelDef.availableResources,
-      tutorial: levelDef.tutorial
+      tutorial: levelDef.tutorial,
     });
 
     return true;
@@ -448,8 +459,8 @@ class CampaignMode {
     this.gameEngine.emit('campaign:level-failed', {
       levelId: this.currentLevel,
       title: this.currentLevelDef.title,
-      reason: reason,
-      elapsedTime: Math.round(this.elapsedTime)
+      reason,
+      elapsedTime: Math.round(this.elapsedTime),
     });
   }
 
@@ -489,7 +500,7 @@ class CampaignMode {
     this.gameEngine.emit('campaign:hint-used', {
       levelId: this.currentLevel,
       hintIndex: index,
-      hint: hint
+      hint,
     });
 
     return hint;
@@ -524,6 +535,12 @@ class CampaignMode {
     this.gameEngine.emit('campaign:tutorial-skipped', { levelId: this.currentLevel });
   }
 
+  getCompletionPercentage() {
+    if (this.objectiveProgress.length === 0) return 0;
+    const completed = this.objectiveProgress.filter((o) => o.completed).length;
+    return Math.round((completed / this.objectiveProgress.length) * 100);
+  }
+
   getStatus() {
     return {
       state: this.state,
@@ -533,15 +550,13 @@ class CampaignMode {
       chapterName: this.currentLevelDef?.chapterName || null,
       elapsedTime: Math.round(this.elapsedTime),
       objectives: this.objectiveProgress,
-      completionPercentage: this.objectiveProgress.length > 0
-        ? Math.round((this.objectiveProgress.filter((o) => o.completed).length / this.objectiveProgress.length) * 100)
-        : 0,
+      completionPercentage: this.getCompletionPercentage(),
       clusterHealth: this.incidentEngine.getClusterHealth(),
       activeIncidents: this.incidentEngine.getActiveIncidents().length,
       tutorialActive: this.tutorialActive,
       tutorialStep: this.tutorialStep,
       hints: this.currentLevelDef?.hints || [],
-      availableResources: this.currentLevelDef?.availableResources || []
+      availableResources: this.currentLevelDef?.availableResources || [],
     };
   }
 

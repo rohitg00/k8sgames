@@ -339,9 +339,18 @@ export class ResourceBase {
     return {
       apiVersion: this.apiVersion,
       kind: this.kind,
-      metadata: { ...this.metadata, ownerReferences: [...this.metadata.ownerReferences], finalizers: [...this.metadata.finalizers], labels: { ...this.metadata.labels }, annotations: { ...this.metadata.annotations } },
+      metadata: {
+        ...this.metadata,
+        ownerReferences: [...this.metadata.ownerReferences],
+        finalizers: [...this.metadata.finalizers],
+        labels: { ...this.metadata.labels },
+        annotations: { ...this.metadata.annotations },
+      },
       spec: JSON.parse(JSON.stringify(this.spec)),
-      status: { ...this.status, conditions: this.status.conditions.map((c) => ({ ...c })) },
+      status: {
+        ...this.status,
+        conditions: this.status.conditions.map((c) => ({ ...c })),
+      },
     };
   }
 

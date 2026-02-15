@@ -665,15 +665,11 @@ export class ResourceMeshFactory {
     updateStatus(group, status) {
         const statusColor = getStatusColor(status);
         group.traverse((child) => {
-            if (!child.isMesh || child.userData.isLabel || child.userData.isGlow) return;
-            if (child.material && child.material.emissive) {
-                child.material.emissive.set(statusColor);
-            }
-        });
-
-        group.traverse((child) => {
+            if (!child.isMesh) return;
             if (child.userData.isGlow && child.material) {
                 child.material.color.set(statusColor);
+            } else if (!child.userData.isLabel && child.material?.emissive) {
+                child.material.emissive.set(statusColor);
             }
         });
     }

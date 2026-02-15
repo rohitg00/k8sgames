@@ -28,12 +28,21 @@ export class Node extends ResourceBase {
     this.cpuUsedMillis = 0;
     this.memoryUsedBytes = 0;
     this.pods = [];
+    const now = new Date().toISOString();
+    const makeCondition = (type, status, reason, message) => ({
+      type,
+      status,
+      lastHeartbeatTime: now,
+      lastTransitionTime: now,
+      reason,
+      message,
+    });
     this.conditions = [
-      { type: 'Ready', status: 'True', lastHeartbeatTime: new Date().toISOString(), lastTransitionTime: new Date().toISOString(), reason: 'KubeletReady', message: 'kubelet is posting ready status' },
-      { type: 'MemoryPressure', status: 'False', lastHeartbeatTime: new Date().toISOString(), lastTransitionTime: new Date().toISOString(), reason: 'KubeletHasSufficientMemory', message: 'kubelet has sufficient memory available' },
-      { type: 'DiskPressure', status: 'False', lastHeartbeatTime: new Date().toISOString(), lastTransitionTime: new Date().toISOString(), reason: 'KubeletHasNoDiskPressure', message: 'kubelet has no disk pressure' },
-      { type: 'PIDPressure', status: 'False', lastHeartbeatTime: new Date().toISOString(), lastTransitionTime: new Date().toISOString(), reason: 'KubeletHasSufficientPID', message: 'kubelet has sufficient PID available' },
-      { type: 'NetworkUnavailable', status: 'False', lastHeartbeatTime: new Date().toISOString(), lastTransitionTime: new Date().toISOString(), reason: 'FlannelIsUp', message: 'Flannel is running on this node' }
+      makeCondition('Ready', 'True', 'KubeletReady', 'kubelet is posting ready status'),
+      makeCondition('MemoryPressure', 'False', 'KubeletHasSufficientMemory', 'kubelet has sufficient memory available'),
+      makeCondition('DiskPressure', 'False', 'KubeletHasNoDiskPressure', 'kubelet has no disk pressure'),
+      makeCondition('PIDPressure', 'False', 'KubeletHasSufficientPID', 'kubelet has sufficient PID available'),
+      makeCondition('NetworkUnavailable', 'False', 'FlannelIsUp', 'Flannel is running on this node'),
     ];
     this.nodeInfo = {
       kubeletVersion: 'v1.29.2',
@@ -268,11 +277,13 @@ export class Namespace extends ResourceBase {
   }
 
   updateCounts(resources) {
-    this.podCount = resources.filter(r => r.kind === 'Pod' && r.metadata.namespace === this.metadata.name).length;
-    this.serviceCount = resources.filter(r => r.kind === 'Service' && r.metadata.namespace === this.metadata.name).length;
-    this.deploymentCount = resources.filter(r => r.kind === 'Deployment' && r.metadata.namespace === this.metadata.name).length;
-    this.configMapCount = resources.filter(r => r.kind === 'ConfigMap' && r.metadata.namespace === this.metadata.name).length;
-    this.secretCount = resources.filter(r => r.kind === 'Secret' && r.metadata.namespace === this.metadata.name).length;
+    const nsResources = resources.filter(r => r.metadata.namespace === this.metadata.name);
+    const countByKind = (kind) => nsResources.filter(r => r.kind === kind).length;
+    this.podCount = countByKind('Pod');
+    this.serviceCount = countByKind('Service');
+    this.deploymentCount = countByKind('Deployment');
+    this.configMapCount = countByKind('ConfigMap');
+    this.secretCount = countByKind('Secret');
   }
 
   tick(deltaTime) {
@@ -324,20 +335,29 @@ export class HorizontalPodAutoscaler extends ResourceBase {
       },
       minReplicas: metadata.minReplicas || 1,
       maxReplicas: metadata.maxReplicas || 10,
-      metrics: metadata.metrics || [
-        { type: 'Resource', resource: { name: 'cpu', target: { type: 'Utilization', averageUtilization: 50 } } }
-      ],
+      metrics: metadata.metrics || [{
+        type: 'Resource',
+        resource: {
+          name: 'cpu',
+          target: { type: 'Utilization', averageUtilization: 50 },
+        },
+      }],
       behavior: {
         scaleUp: {
           stabilizationWindowSeconds: metadata.scaleUpStabilization || 0,
-          policies: [{ type: 'Percent', value: 100, periodSeconds: 15 }, { type: 'Pods', value: 4, periodSeconds: 15 }],
-          selectPolicy: 'Max'
+          policies: [
+            { type: 'Percent', value: 100, periodSeconds: 15 },
+            { type: 'Pods', value: 4, periodSeconds: 15 },
+          ],
+          selectPolicy: 'Max',
         },
         scaleDown: {
           stabilizationWindowSeconds: metadata.scaleDownStabilization || 300,
-          policies: [{ type: 'Percent', value: 100, periodSeconds: 15 }],
-          selectPolicy: 'Max'
-        }
+          policies: [
+            { type: 'Percent', value: 100, periodSeconds: 15 },
+          ],
+          selectPolicy: 'Max',
+        },
       }
     };
     this.currentReplicas = metadata.currentReplicas || this.spec.minReplicas;
@@ -347,9 +367,10 @@ export class HorizontalPodAutoscaler extends ResourceBase {
     this.lastScaleTime = null;
     this.scaleUpCooldown = 0;
     this.scaleDownCooldown = 0;
+    const conditionTime = new Date().toISOString();
     this.conditions = [
-      { type: 'AbleToScale', status: 'True', reason: 'ReadyForNewScale', lastTransitionTime: new Date().toISOString() },
-      { type: 'ScalingActive', status: 'True', reason: 'ValidMetricFound', lastTransitionTime: new Date().toISOString() }
+      { type: 'AbleToScale', status: 'True', reason: 'ReadyForNewScale', lastTransitionTime: conditionTime },
+      { type: 'ScalingActive', status: 'True', reason: 'ValidMetricFound', lastTransitionTime: conditionTime },
     ];
     this.setStatus('Active');
   }

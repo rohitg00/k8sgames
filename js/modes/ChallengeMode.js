@@ -249,15 +249,19 @@ class ChallengeMode {
     const progress = this.scoringEngine.getProgress();
     return CHALLENGES.map((ch) => {
       const cp = progress.challengeProgress?.[ch.id];
+      const completed = cp?.completed || false;
+      const stars = cp?.stars || 0;
+      const bestTime = cp?.bestTime || null;
+
       return {
         id: ch.id,
         title: ch.title,
         description: ch.description,
         timeLimit: ch.timeLimit,
         objectiveCount: ch.objectives.length,
-        completed: cp?.completed || false,
-        stars: cp?.stars || 0,
-        bestTime: cp?.bestTime || null
+        completed,
+        stars,
+        bestTime,
       };
     });
   }
@@ -290,13 +294,15 @@ class ChallengeMode {
 
     this.ticker = setInterval(() => this.update(), 1000);
 
+    const objectives = this.objectiveProgress;
+
     this.gameEngine.emit('challenge:started', {
       challengeId: def.id,
       title: def.title,
       description: def.description,
       timeLimit: def.timeLimit,
-      objectives: this.objectiveProgress,
-      availableResources: def.availableResources
+      objectives,
+      availableResources: def.availableResources,
     });
 
     return true;

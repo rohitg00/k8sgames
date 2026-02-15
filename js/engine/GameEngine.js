@@ -422,7 +422,6 @@ export class GameEngine {
       return { success: false, message: `${kind} "${name}" already exists in namespace "${namespace}"` };
     }
 
-    const { ResourceBase } = this._requireResourceBase();
     const resource = new ResourceBase(kind, this._apiVersionForKind(kind), name, namespace || 'default');
     if (spec) {
       resource.updateSpec(spec);
@@ -571,10 +570,6 @@ export class GameEngine {
     const events = pod.getEvents(20);
     const logs = events.map((e) => `${e.timestamp} [${e.type}] ${e.reason}: ${e.message}`);
     return { success: true, logs };
-  }
-
-  _requireResourceBase() {
-    return { ResourceBase };
   }
 
   _apiVersionForKind(kind) {
@@ -876,7 +871,7 @@ export class GameEngine {
 
   destroy() {
     this.stop();
-    for (const [name, plugin] of this._plugins) {
+    for (const [, plugin] of this._plugins) {
       if (typeof plugin.destroy === 'function') {
         plugin.destroy();
       }

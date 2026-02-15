@@ -417,7 +417,9 @@ export class CommandBar {
     if (fFlag === -1 || !args[fFlag + 1]) return { error: true, message: 'error: must specify -f <filename>' };
 
     const filename = args[fFlag + 1];
-    const kind = filename.includes('deploy') ? 'Deployment' : filename.includes('svc') ? 'Service' : 'Pod';
+    let kind = 'Pod';
+    if (filename.includes('deploy')) kind = 'Deployment';
+    else if (filename.includes('svc')) kind = 'Service';
     const name = filename.replace(/\.(yaml|yml|json)$/, '').replace(/^.*\//, '');
 
     const uid = `${kind.toLowerCase()}-${name}-${Date.now()}`;
