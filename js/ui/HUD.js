@@ -40,7 +40,7 @@ export class HUD {
             <div id="hud-health" class="w-3 h-3 rounded-full bg-green-400 shadow-lg shadow-green-400/50 transition-colors duration-500"></div>
             <span class="text-white/90 text-sm font-semibold tracking-wide">K8s Games</span>
           </div>
-          <div class="h-5 w-px bg-white/10"></div>
+          <div class="hud-divider h-5 w-px bg-white/10"></div>
           <div class="flex items-center gap-3 text-xs text-white/60">
             <div class="flex items-center gap-1">
               <span class="text-white/40">Nodes</span>
@@ -54,18 +54,18 @@ export class HUD {
               <span class="text-white/20">/</span>
               <span id="hud-pods-failed" class="text-red-400 font-mono">0</span>
             </div>
-            <div class="flex items-center gap-1">
+            <div class="hud-extra-stat flex items-center gap-1">
               <span class="text-white/40">Deploy</span>
               <span id="hud-deployments" class="text-white/90 font-mono">0</span>
             </div>
-            <div class="flex items-center gap-1">
+            <div class="hud-extra-stat flex items-center gap-1">
               <span class="text-white/40">Svc</span>
               <span id="hud-services" class="text-white/90 font-mono">0</span>
             </div>
           </div>
         </div>
 
-        <div class="flex items-center gap-4">
+        <div class="hud-center flex items-center gap-4">
           <div class="flex items-center gap-2 min-w-[140px]">
             <span class="text-white/40 text-xs">CPU</span>
             <div class="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
@@ -85,7 +85,7 @@ export class HUD {
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-2">
             <span id="hud-timer" class="text-white/60 text-xs font-mono">00:00</span>
-            <div class="h-5 w-px bg-white/10"></div>
+            <div class="hud-divider h-5 w-px bg-white/10"></div>
             <span id="hud-mode" class="text-xs text-sky-400 font-medium uppercase tracking-wider">Sandbox</span>
           </div>
 
@@ -100,7 +100,7 @@ export class HUD {
             </div>
           </div>
 
-          <div class="h-5 w-px bg-white/10"></div>
+          <div class="hud-divider h-5 w-px bg-white/10"></div>
 
           <div class="flex items-center gap-1">
             <button id="hud-pause" class="px-1.5 py-0.5 text-xs text-white/60 hover:text-white/90 hover:bg-white/10 rounded transition-colors">
@@ -111,7 +111,7 @@ export class HUD {
             <button id="hud-speed-4" class="px-1.5 py-0.5 text-xs text-white/40 hover:text-white/60 rounded font-mono transition-colors">4x</button>
           </div>
 
-          <div class="h-5 w-px bg-white/10"></div>
+          <div class="hud-divider h-5 w-px bg-white/10"></div>
 
           <button id="hud-alerts" class="relative px-2 py-0.5 text-xs text-white/60 hover:text-white/90 transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -120,7 +120,7 @@ export class HUD {
             <span id="hud-alert-badge" class="absolute -top-1 -right-1 hidden min-w-[16px] h-4 px-1 text-[10px] font-bold text-white bg-red-500 rounded-full flex items-center justify-center">0</span>
           </button>
 
-          <div class="h-5 w-px bg-white/10"></div>
+          <div class="hud-divider h-5 w-px bg-white/10"></div>
 
           <a href="https://github.com/rohitg00/k8sgames" target="_blank" rel="noopener" class="hud-github flex items-center gap-1.5 px-2 py-0.5 text-xs text-white/50 hover:text-white/90 transition-all rounded-md hover:bg-white/5" title="Star on GitHub">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">

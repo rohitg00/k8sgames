@@ -1015,6 +1015,7 @@ html, body {
   #resource-palette {
     width: 44px !important;
     padding: 4px 0 !important;
+    top: 36px !important;
   }
   .palette-item {
     width: 36px !important;
@@ -1043,19 +1044,35 @@ html, body {
     font-size: 0.6rem !important;
   }
   #hud > div {
-    gap: 0.35rem !important;
-    padding: 0 0.5rem !important;
+    gap: 0.25rem !important;
+    padding: 0 0.4rem !important;
+    overflow: hidden !important;
   }
   #hud .text-sm, #hud .text-xs {
     font-size: 0.6rem !important;
   }
   #hud .gap-4,
   #hud .gap-3 {
-    gap: 0.3rem !important;
+    gap: 0.25rem !important;
   }
   #hud .px-4 {
-    padding-left: 0.4rem !important;
-    padding-right: 0.4rem !important;
+    padding-left: 0.3rem !important;
+    padding-right: 0.3rem !important;
+  }
+  .hud-center {
+    display: none !important;
+  }
+  .hud-extra-stat {
+    display: none !important;
+  }
+  .hud-divider {
+    display: none !important;
+  }
+  .hud-github {
+    display: none !important;
+  }
+  #hud-xp-container {
+    display: none !important;
   }
   #objectives-panel {
     left: 48px !important;
@@ -1077,9 +1094,14 @@ html, body {
     display: none !important;
   }
   #inspector-panel {
-    width: 100vw !important;
-    max-width: 100vw !important;
+    width: 80vw !important;
+    max-width: 320px !important;
     top: 36px !important;
+    right: 0 !important;
+    left: auto !important;
+  }
+  #inspector-panel .w-96 {
+    width: 100% !important;
   }
   #incident-panel {
     width: 80vw !important;
@@ -1097,7 +1119,6 @@ html, body {
     font-size: 0.65rem !important;
     max-width: calc(100vw - 56px) !important;
   }
-
 
   #view-toolbar {
     left: 48px !important;
@@ -1198,6 +1219,7 @@ html, body {
   #resource-palette {
     width: 38px !important;
     padding: 2px 0 !important;
+    top: 32px !important;
   }
   .palette-item {
     width: 30px !important;
@@ -1212,12 +1234,22 @@ html, body {
   #hud {
     height: 32px !important;
   }
+  #hud > div {
+    padding: 0 0.25rem !important;
+  }
 
   #objectives-panel {
     left: 42px !important;
     max-width: calc(100vw - 48px) !important;
     max-height: 40vh !important;
     min-width: 160px !important;
+    top: 34px !important;
+  }
+
+  #inspector-panel {
+    width: 85vw !important;
+    max-width: 280px !important;
+    top: 32px !important;
   }
 
   #incident-panel {
@@ -1257,6 +1289,18 @@ html, body {
 }
 
 @media (max-height: 500px) and (orientation: landscape) {
+  .hud-center {
+    display: none !important;
+  }
+  .hud-extra-stat {
+    display: none !important;
+  }
+  .hud-divider {
+    display: none !important;
+  }
+  #hud-xp-container {
+    display: none !important;
+  }
   #resource-palette {
     top: 32px !important;
     width: 38px !important;
