@@ -1,5 +1,14 @@
 import { ResourceBase } from './ResourceBase.js';
 
+function parseStorage(storage) {
+  if (typeof storage === 'number') return storage;
+  const units = { Ki: 1024, Mi: 1024 ** 2, Gi: 1024 ** 3, Ti: 1024 ** 4 };
+  for (const [suffix, multiplier] of Object.entries(units)) {
+    if (storage.endsWith(suffix)) return parseInt(storage) * multiplier;
+  }
+  return parseInt(storage);
+}
+
 export class PersistentVolume extends ResourceBase {
   constructor(metadata = {}) {
     super('PersistentVolume', { ...metadata, namespace: '' });
@@ -18,17 +27,8 @@ export class PersistentVolume extends ResourceBase {
     };
     this.phase = 'Available';
     this.claimRef = null;
-    this.capacityBytes = this._parseStorage(this.spec.capacity.storage);
+    this.capacityBytes = parseStorage(this.spec.capacity.storage);
     this.setStatus('Available');
-  }
-
-  _parseStorage(storage) {
-    if (typeof storage === 'number') return storage;
-    const units = { Ki: 1024, Mi: 1024 ** 2, Gi: 1024 ** 3, Ti: 1024 ** 4 };
-    for (const [suffix, multiplier] of Object.entries(units)) {
-      if (storage.endsWith(suffix)) return parseInt(storage) * multiplier;
-    }
-    return parseInt(storage);
   }
 
   bind(pvcName, pvcNamespace, pvcUid) {
@@ -61,9 +61,6 @@ export class PersistentVolume extends ResourceBase {
     this.addEvent('Warning', 'VolumeFailed', reason || 'Volume is in a failed state');
   }
 
-  tick(deltaTime) {
-    super.tick(deltaTime);
-  }
 
   getShape() { return 'cylinder-tall'; }
   getColor() { return '#4b5563'; }
@@ -132,9 +129,6 @@ export class StorageClass extends ResourceBase {
     this.setStatus('Active');
   }
 
-  tick(deltaTime) {
-    super.tick(deltaTime);
-  }
 
   getShape() { return 'database'; }
   getColor() { return '#6366f1'; }
@@ -190,18 +184,9 @@ export class PersistentVolumeClaim extends ResourceBase {
     this.bindingDelay = 1 + Math.random() * 3;
     this.mountedBy = [];
     this.usedBytes = 0;
-    this.capacityBytes = this._parseStorage(this.spec.resources.requests.storage);
+    this.capacityBytes = parseStorage(this.spec.resources.requests.storage);
     this.conditions = [];
     this.setStatus('Pending');
-  }
-
-  _parseStorage(storage) {
-    if (typeof storage === 'number') return storage;
-    const units = { Ki: 1024, Mi: 1024 ** 2, Gi: 1024 ** 3, Ti: 1024 ** 4 };
-    for (const [suffix, multiplier] of Object.entries(units)) {
-      if (storage.endsWith(suffix)) return parseInt(storage) * multiplier;
-    }
-    return parseInt(storage);
   }
 
   _formatBytes(bytes) {

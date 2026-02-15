@@ -170,7 +170,7 @@ export class SimulationTick {
         const prefs = pod.spec.affinity.nodeAffinity.preferredDuringScheduling;
         for (const pref of prefs) {
           if (node.matchesSelector(pref.matchLabels || {})) {
-            score + pref.weight / 100;
+            score += pref.weight / 100;
           }
         }
       }

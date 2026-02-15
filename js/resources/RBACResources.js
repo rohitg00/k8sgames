@@ -22,9 +22,6 @@ export class ServiceAccount extends ResourceBase {
     this.secrets = this.secrets.filter(s => s !== secretName);
   }
 
-  tick(deltaTime) {
-    super.tick(deltaTime);
-  }
 
   getShape() { return 'person'; }
   getColor() { return '#8b5cf6'; }
@@ -87,9 +84,6 @@ export class Role extends ResourceBase {
     );
   }
 
-  tick(deltaTime) {
-    super.tick(deltaTime);
-  }
 
   getShape() { return 'key'; }
   getColor() { return '#f59e0b'; }
@@ -147,9 +141,6 @@ export class ClusterRole extends ResourceBase {
     );
   }
 
-  tick(deltaTime) {
-    super.tick(deltaTime);
-  }
 
   getShape() { return 'key-cluster'; }
   getColor() { return '#d97706'; }
@@ -205,9 +196,6 @@ export class RoleBinding extends ResourceBase {
     this.spec.subjects = this.spec.subjects.filter(s => s.name !== name);
   }
 
-  tick(deltaTime) {
-    super.tick(deltaTime);
-  }
 
   getShape() { return 'link'; }
   getColor() { return '#10b981'; }
@@ -272,9 +260,6 @@ export class ClusterRoleBinding extends ResourceBase {
     this.spec.subjects = this.spec.subjects.filter(s => s.name !== name);
   }
 
-  tick(deltaTime) {
-    super.tick(deltaTime);
-  }
 
   getShape() { return 'link-cluster'; }
   getColor() { return '#059669'; }

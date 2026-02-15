@@ -368,10 +368,6 @@ export class NetworkPolicy extends ResourceBase {
     this.affectedPods = pods.filter(p => this._matchesPodSelector(p));
   }
 
-  tick(deltaTime) {
-    super.tick(deltaTime);
-  }
-
   getShape() { return 'shield'; }
 
   getColor() {

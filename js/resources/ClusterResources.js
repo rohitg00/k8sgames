@@ -286,9 +286,6 @@ export class Namespace extends ResourceBase {
     this.secretCount = countByKind('Secret');
   }
 
-  tick(deltaTime) {
-    super.tick(deltaTime);
-  }
 
   getShape() { return 'floor-zone'; }
   getColor() { return this.displayColor; }
@@ -573,9 +570,6 @@ export class ResourceQuota extends ResourceBase {
     return hard > 0 ? (used / hard) * 100 : 0;
   }
 
-  tick(deltaTime) {
-    super.tick(deltaTime);
-  }
 
   getShape() { return 'barrier'; }
   getColor() { return '#ca8a04'; }
@@ -650,9 +644,6 @@ export class PodDisruptionBudget extends ResourceBase {
     return this.disruptionsAllowed > 0;
   }
 
-  tick(deltaTime) {
-    super.tick(deltaTime);
-  }
 
   getShape() { return 'shield-check'; }
   getColor() { return '#0ea5e9'; }

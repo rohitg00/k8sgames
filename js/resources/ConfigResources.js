@@ -63,9 +63,6 @@ export class ConfigMap extends ResourceBase {
     this.envInjectedBy = this.envInjectedBy.filter(n => n !== podName);
   }
 
-  tick(deltaTime) {
-    super.tick(deltaTime);
-  }
 
   getShape() { return 'scroll'; }
   getColor() { return '#92400e'; }
@@ -197,9 +194,6 @@ export class Secret extends ResourceBase {
     this.envInjectedBy = this.envInjectedBy.filter(n => n !== podName);
   }
 
-  tick(deltaTime) {
-    super.tick(deltaTime);
-  }
 
   getShape() { return 'lock'; }
   getColor() { return '#991b1b'; }
