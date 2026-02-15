@@ -1010,3 +1010,183 @@ html, body {
   from { opacity: 1; }
   to { opacity: 0; }
 }
+
+@media (max-width: 768px) {
+  #inspector-panel {
+    width: 85vw !important;
+    max-width: 350px !important;
+  }
+  #incident-panel {
+    width: 75vw !important;
+    max-width: 300px !important;
+    left: 0 !important;
+  }
+  #minimap-container {
+    width: 100px !important;
+    height: 100px !important;
+    bottom: 52px !important;
+    right: 4px !important;
+  }
+  #metrics-dashboard {
+    left: 52px !important;
+    font-size: 0.7rem;
+  }
+  #hud .text-sm, #hud .text-xs {
+    font-size: 0.65rem;
+  }
+  #hud .gap-4 {
+    gap: 0.5rem;
+  }
+  #hud .gap-3 {
+    gap: 0.4rem;
+  }
+  #hud .px-4 {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  .menu-logo {
+    font-size: 2.5rem;
+  }
+  .menu-subtitle {
+    font-size: 0.75rem;
+  }
+  .menu-modes {
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0 1rem;
+    width: 100%;
+  }
+  .mode-card {
+    width: 100% !important;
+    min-height: auto;
+    padding: 1rem;
+  }
+  .menu-footer {
+    font-size: 0.65rem;
+    padding: 0 0.5rem;
+  }
+
+  #resource-palette {
+    width: 52px;
+    padding: 6px 0;
+  }
+  .palette-item {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+  }
+  .palette-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  .palette-label {
+    font-size: 0.5rem;
+  }
+  .palette-tooltip {
+    display: none !important;
+  }
+  .palette-section-label {
+    font-size: 0.5rem;
+    padding: 0.2rem 0;
+  }
+
+  #objectives-panel {
+    left: 56px !important;
+    width: 200px !important;
+    top: 48px !important;
+  }
+  #objectives-panel .text-sm {
+    font-size: 0.7rem;
+  }
+  #obj-panel-desc {
+    font-size: 9px !important;
+  }
+
+  #view-toolbar {
+    left: 56px;
+    transform: none;
+    bottom: 8px;
+    padding: 4px 6px;
+    gap: 4px;
+    max-width: calc(100vw - 64px);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  #view-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+  #view-toolbar button {
+    padding: 6px 8px;
+    font-size: 0.65rem;
+    white-space: nowrap;
+  }
+  #view-toolbar button svg {
+    width: 14px;
+    height: 14px;
+  }
+  #view-toolbar button span,
+  #view-toolbar .text-\\[11px\\] {
+    display: none;
+  }
+
+  #game-github-badge {
+    top: auto !important;
+    bottom: 56px;
+    right: 8px !important;
+    padding: 4px 8px;
+  }
+  #game-github-badge span {
+    display: none;
+  }
+
+  .tutorial-card {
+    max-width: 90vw;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 1rem;
+  }
+  .tutorial-mode {
+    font-size: 1.2rem;
+  }
+  .tutorial-desc {
+    font-size: 0.75rem;
+  }
+  .tutorial-tip {
+    font-size: 0.7rem;
+  }
+
+  #name-prompt-overlay > div {
+    width: 85vw;
+    max-width: 280px;
+  }
+}
+
+@media (max-width: 480px) {
+  .menu-logo {
+    font-size: 2rem;
+  }
+  #resource-palette {
+    width: 44px;
+    padding: 4px 0;
+  }
+  .palette-item {
+    width: 34px;
+    height: 34px;
+  }
+  .palette-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+  .palette-label {
+    font-size: 0.45rem;
+  }
+
+  #objectives-panel {
+    left: 48px !important;
+    width: 180px !important;
+  }
+
+  #view-toolbar {
+    left: 48px;
+  }
+}
