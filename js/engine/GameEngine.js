@@ -138,6 +138,10 @@ const GAME_STATES = {
 export class GameEngine {
   constructor(options = {}) {
     this.eventBus = new EventBus();
+    this.on = this.eventBus.on.bind(this.eventBus);
+    this.off = this.eventBus.off.bind(this.eventBus);
+    this.emit = this.eventBus.emit.bind(this.eventBus);
+    this.once = this.eventBus.once.bind(this.eventBus);
     this.cluster = new ClusterState(this.eventBus);
     this.simulation = new SimulationTick(this.cluster, this.eventBus);
 
