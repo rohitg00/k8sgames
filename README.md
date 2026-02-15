@@ -2,7 +2,7 @@
 
 Learn Kubernetes by playing. Deploy pods, fix CrashLoopBackOff, type real kubectl commands — all in a 3D sim that runs in your browser.
 
-**[Play Now](https://k8sgames.com)**
+**[Play Now at k8sgames.com](https://k8sgames.com)**
 
 ## Get Started
 
@@ -57,19 +57,25 @@ Bottom toolbar: **Auto-Align** (K8s architecture layout) | **Reset View** | **YA
 
 ## What's In It
 
-**17 K8s resources** — Pod, Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob, Service, Ingress, NetworkPolicy, ConfigMap, Secret, PVC, Node, Namespace, HPA, ResourceQuota. Each has a unique 3D shape and color.
+**25 K8s resources** — Pod, Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob, Service, Ingress, NetworkPolicy, ConfigMap, Secret, PVC, PV, StorageClass, Node, Namespace, HPA, ResourceQuota, PodDisruptionBudget, ServiceAccount, Role, ClusterRole, RoleBinding, ClusterRoleBinding. Each has a unique 3D shape, color, and real K8s behavior.
 
-**26 incidents** — OOMKilled, CrashLoopBackOff, ImagePullBackOff, node NotReady, DNS failures, PVC pending, API throttling, rollout stuck, and more. Investigate with kubectl describe/logs, then fix.
+**29 incidents** — OOMKilled, CrashLoopBackOff, ImagePullBackOff, node NotReady, DNS failures, PVC pending, API throttling, rollout stuck, certificate expiry, HPA flapping, and more. Investigate with kubectl describe/logs, then fix.
 
 **kubectl command bar** — type real commands: `get pods`, `describe deployment nginx`, `scale deployment nginx --replicas=3`, `logs pod-1`, `rollout status`, `drain node-1`. Tab completion included.
+
+**Visual connections** — animated lines show ownership chains (Deployment -> ReplicaSet -> Pod) and network routing (Service -> Pods) based on label selectors. Place a Service and pick which Deployment it connects to.
+
+**Edit resources** — click Edit on any resource to modify labels, replicas, selectors, and service types. Quick-connect buttons let you wire a Service to an existing Deployment in one click.
 
 **Architecture Advisor** — scores your cluster design across HA, security, scalability, cost, and 6 other categories.
 
 **40 achievements** and a 30-level XP system from Novice to CKA-ready.
 
+**RBAC simulation** — ServiceAccounts, Roles, ClusterRoles, RoleBindings, and ClusterRoleBindings with real rule definitions and wildcard detection.
+
 ## Tech
 
-Three.js r152 + Tailwind CSS CDN + vanilla ES6 modules. No build step. ~17K lines across 30 files.
+Three.js r152 + Tailwind CSS CDN + vanilla ES6 modules. No build step, no dependencies, no bundler. ~50K lines across 90+ files.
 
 ## License
 
