@@ -713,6 +713,31 @@ export class ClusterState {
   getAllKinds() {
     return [...RESOURCE_KINDS];
   }
+
+  addResource(obj) {
+    const resource = new ResourceBase(obj.kind, {
+      name: obj.name || obj.metadata?.name || 'unnamed',
+      namespace: obj.metadata?.namespace || 'default',
+      labels: obj.metadata?.labels || {},
+      annotations: obj.metadata?.annotations || {},
+    });
+    if (obj.spec) {
+      resource.spec = typeof obj.spec === 'object' ? { ...obj.spec } : {};
+    }
+    if (obj.status?.phase) {
+      resource.setPhase(obj.status.phase);
+    }
+    return this.add(resource);
+  }
+
+  removeResource(kind, name, namespace = 'default') {
+    const key = `${kind}:${namespace}:${name}`;
+    const uid = this.nameIndex.get(key);
+    if (uid) {
+      return this.remove(uid);
+    }
+    return null;
+  }
 }
 
 export default ClusterState;

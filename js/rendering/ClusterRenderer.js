@@ -1,21 +1,16 @@
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { ResourceMeshFactory } from './ResourceMeshes.js';
 import { ConnectionLineManager } from './ConnectionLines.js';
 import { ParticleTrafficSystem } from './ParticleTraffic.js';
 
 const BACKGROUND_COLOR = 0x0d1117;
 const K8S_BLUE = 0x326CE5;
-const GRID_SIZE = 80;
-const GRID_DIVISIONS = 40;
-const ISO_X_ROTATION = Math.PI / 6;
-const ISO_Y_ROTATION = Math.PI / 4;
-const ZOOM_SPEED = 0.1;
-const ZOOM_MIN = 2;
-const ZOOM_MAX = 40;
-const PAN_SPEED = 0.005;
+const GRID_SIZE = 40;
+const GRID_DIVISIONS = 20;
 const HIGHLIGHT_COLOR = 0x58a6ff;
 const SELECT_COLOR = 0xffa657;
-const NAMESPACE_OPACITY = 0.08;
+const NAMESPACE_OPACITY = 0.04;
 
 const NAMESPACE_COLORS = [
     0x326CE5, 0x28a745, 0xe36209, 0x8957e5,
@@ -30,20 +25,23 @@ export class ClusterRenderer {
         this.namespacePlanes = new Map();
         this.selectedResource = null;
         this.hoveredResource = null;
-        this.isPanning = false;
-        this.panStart = new THREE.Vector2();
-        this.panTarget = new THREE.Vector3();
         this.mouse = new THREE.Vector2(-999, -999);
+        this._clickStart = new THREE.Vector2();
+        this._didDrag = false;
         this.namespaceColorIndex = 0;
         this.running = false;
         this.frameId = null;
         this.lastFrameTime = 0;
         this.onSelect = null;
         this.onHover = null;
+        this.onResourceMoved = null;
+        this._draggingResource = null;
+        this._groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
         this._initScene();
         this._initCamera();
         this._initRenderer();
+        this._initControls();
         this._initLights();
         this._initGrid();
         this._initRaycaster();
@@ -54,24 +52,14 @@ export class ClusterRenderer {
     _initScene() {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(BACKGROUND_COLOR);
-        this.scene.fog = new THREE.FogExp2(BACKGROUND_COLOR, 0.008);
+        this.scene.fog = new THREE.FogExp2(BACKGROUND_COLOR, 0.006);
     }
 
     _initCamera() {
         const aspect = this.canvas.clientWidth / this.canvas.clientHeight;
-        const frustum = 15;
-        this.camera = new THREE.OrthographicCamera(
-            -frustum * aspect, frustum * aspect,
-            frustum, -frustum,
-            0.1, 1000
-        );
-        this.cameraFrustum = frustum;
-        this.camera.position.set(30, 30, 30);
-        this.camera.rotation.order = 'YXZ';
-        this.camera.rotation.y = ISO_Y_ROTATION;
-        this.camera.rotation.x = -ISO_X_ROTATION;
+        this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 500);
+        this.camera.position.set(18, 14, 18);
         this.camera.lookAt(0, 0, 0);
-        this.cameraTarget = new THREE.Vector3(0, 0, 0);
     }
 
     _initRenderer() {
@@ -89,11 +77,41 @@ export class ClusterRenderer {
         this.renderer.toneMappingExposure = 1.2;
     }
 
+    _initControls() {
+        this.controls = new OrbitControls(this.camera, this.canvas);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.08;
+        this.controls.enableRotate = true;
+        this.controls.enableZoom = true;
+        this.controls.enablePan = true;
+        this.controls.rotateSpeed = 0.8;
+        this.controls.zoomSpeed = 1.2;
+        this.controls.panSpeed = 0.8;
+        this.controls.minDistance = 5;
+        this.controls.maxDistance = 80;
+        this.controls.maxPolarAngle = Math.PI / 2.1;
+        this.controls.minPolarAngle = 0.1;
+        this.controls.target.set(0, 0, 0);
+        this.controls.mouseButtons = {
+            LEFT: THREE.MOUSE.ROTATE,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.PAN,
+        };
+        this.controls.touches = {
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.DOLLY_PAN,
+        };
+        this.controls.update();
+    }
+
     _initLights() {
-        this.ambientLight = new THREE.AmbientLight(0x4a6fa5, 0.4);
+        this.ambientLight = new THREE.AmbientLight(0x8899bb, 0.7);
         this.scene.add(this.ambientLight);
 
-        this.directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        const hemiLight = new THREE.HemisphereLight(0x88aaff, 0x222244, 0.4);
+        this.scene.add(hemiLight);
+
+        this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
         this.directionalLight.position.set(20, 40, 20);
         this.directionalLight.castShadow = true;
         this.directionalLight.shadow.mapSize.set(2048, 2048);
@@ -106,9 +124,13 @@ export class ClusterRenderer {
         this.directionalLight.shadow.bias = -0.001;
         this.scene.add(this.directionalLight);
 
-        const rimLight = new THREE.DirectionalLight(0x326CE5, 0.3);
+        const rimLight = new THREE.DirectionalLight(0x326CE5, 0.4);
         rimLight.position.set(-15, 10, -15);
         this.scene.add(rimLight);
+
+        const fillLight = new THREE.DirectionalLight(0x446688, 0.3);
+        fillLight.position.set(-10, 5, 20);
+        this.scene.add(fillLight);
     }
 
     _initGrid() {
@@ -116,7 +138,7 @@ export class ClusterRenderer {
         const gridMaterial = new THREE.LineBasicMaterial({
             color: K8S_BLUE,
             transparent: true,
-            opacity: 0.12
+            opacity: 0.1
         });
 
         const halfSize = GRID_SIZE / 2;
@@ -136,7 +158,7 @@ export class ClusterRenderer {
         const axesMaterial = new THREE.LineBasicMaterial({
             color: K8S_BLUE,
             transparent: true,
-            opacity: 0.3
+            opacity: 0.25
         });
         const axesGeometry = new THREE.BufferGeometry();
         axesGeometry.setAttribute('position', new THREE.Float32BufferAttribute([
@@ -145,6 +167,20 @@ export class ClusterRenderer {
         ], 3));
         const axesLines = new THREE.LineSegments(axesGeometry, axesMaterial);
         this.gridGroup.add(axesLines);
+
+        const groundGeometry = new THREE.PlaneGeometry(GRID_SIZE * 1.5, GRID_SIZE * 1.5);
+        const groundMaterial = new THREE.MeshStandardMaterial({
+            color: 0x0a0e14,
+            metalness: 0.9,
+            roughness: 0.2,
+            transparent: true,
+            opacity: 0.15,
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -0.1;
+        ground.receiveShadow = true;
+        this.gridGroup.add(ground);
 
         this.scene.add(this.gridGroup);
     }
@@ -164,14 +200,12 @@ export class ClusterRenderer {
         this._onMouseMove = this._handleMouseMove.bind(this);
         this._onMouseDown = this._handleMouseDown.bind(this);
         this._onMouseUp = this._handleMouseUp.bind(this);
-        this._onWheel = this._handleWheel.bind(this);
         this._onResize = this._handleResize.bind(this);
         this._onContextMenu = (e) => e.preventDefault();
 
         this.canvas.addEventListener('mousemove', this._onMouseMove);
         this.canvas.addEventListener('mousedown', this._onMouseDown);
         this.canvas.addEventListener('mouseup', this._onMouseUp);
-        this.canvas.addEventListener('wheel', this._onWheel, { passive: false });
         this.canvas.addEventListener('contextmenu', this._onContextMenu);
         window.addEventListener('resize', this._onResize);
     }
@@ -181,67 +215,79 @@ export class ClusterRenderer {
         this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-        if (this.isPanning) {
-            const dx = (event.clientX - this.panStart.x) * PAN_SPEED * this.cameraFrustum;
-            const dy = (event.clientY - this.panStart.y) * PAN_SPEED * this.cameraFrustum;
+        if (this._draggingResource) {
+            const pos = this._raycastGround(this.mouse);
+            if (pos) {
+                const group = this.resourceMeshes.get(this._draggingResource);
+                if (group) {
+                    group.position.x = pos.x;
+                    group.position.z = pos.z;
+                }
+            }
+            return;
+        }
 
-            const right = new THREE.Vector3();
-            const up = new THREE.Vector3(0, 1, 0);
-            this.camera.getWorldDirection(new THREE.Vector3()).cross(up).normalize();
-            right.copy(this.camera.getWorldDirection(new THREE.Vector3()).cross(up).normalize());
-
-            this.cameraTarget.addScaledVector(right, -dx);
-            this.cameraTarget.y += dy;
-
-            this.panStart.set(event.clientX, event.clientY);
-            this._updateCameraPosition();
+        const dx = event.clientX - this._clickStart.x;
+        const dy = event.clientY - this._clickStart.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 4) {
+            if (this._dragCandidate && !this._didDrag) {
+                this._draggingResource = this._dragCandidate;
+                this._dragCandidate = null;
+                this.controls.enabled = false;
+                this.canvas.style.cursor = 'grabbing';
+            }
+            this._didDrag = true;
         }
     }
 
     _handleMouseDown(event) {
-        if (event.button === 1 || (event.button === 0 && event.shiftKey)) {
-            this.isPanning = true;
-            this.panStart.set(event.clientX, event.clientY);
-            this.canvas.style.cursor = 'grabbing';
-        } else if (event.button === 0) {
-            this._performPick(true);
+        if (event.button === 0) {
+            this._clickStart.set(event.clientX, event.clientY);
+            this._didDrag = false;
+            this._dragCandidate = null;
+
+            this.raycaster.setFromCamera(this.mouse, this.camera);
+            const intersects = this.raycaster.intersectObjects(this.pickableObjects, true);
+            if (intersects.length > 0) {
+                let target = intersects[0].object;
+                while (target.parent && !target.userData.resourceId) {
+                    target = target.parent;
+                }
+                if (target.userData.resourceId) {
+                    this._dragCandidate = target.userData.resourceId;
+                }
+            }
         }
     }
 
     _handleMouseUp(event) {
-        if (event.button === 1 || (event.button === 0 && event.shiftKey)) {
-            this.isPanning = false;
+        if (this._draggingResource) {
+            const rid = this._draggingResource;
+            this._draggingResource = null;
+            this.controls.enabled = true;
             this.canvas.style.cursor = 'default';
+            const group = this.resourceMeshes.get(rid);
+            if (group && this.onResourceMoved) {
+                this.onResourceMoved(rid, { x: group.position.x, y: 0, z: group.position.z });
+            }
+            this._didDrag = false;
+            return;
         }
-    }
 
-    _handleWheel(event) {
-        event.preventDefault();
-        const delta = event.deltaY > 0 ? 1 + ZOOM_SPEED : 1 - ZOOM_SPEED;
-        this.cameraFrustum = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this.cameraFrustum * delta));
-        this._updateCameraProjection();
+        if (event.button === 0 && !this._didDrag) {
+            this._performPick(true);
+        }
+        this._didDrag = false;
+        this._dragCandidate = null;
     }
 
     _handleResize() {
         const width = this.canvas.clientWidth;
         const height = this.canvas.clientHeight;
         this.renderer.setSize(width, height);
-        this._updateCameraProjection();
-    }
-
-    _updateCameraProjection() {
-        const aspect = this.canvas.clientWidth / this.canvas.clientHeight;
-        this.camera.left = -this.cameraFrustum * aspect;
-        this.camera.right = this.cameraFrustum * aspect;
-        this.camera.top = this.cameraFrustum;
-        this.camera.bottom = -this.cameraFrustum;
+        this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
-    }
-
-    _updateCameraPosition() {
-        const offset = new THREE.Vector3(30, 30, 30).normalize().multiplyScalar(50);
-        this.camera.position.copy(this.cameraTarget).add(offset);
-        this.camera.lookAt(this.cameraTarget);
     }
 
     _performPick(isClick) {
@@ -314,26 +360,40 @@ export class ClusterRenderer {
             const mat = child.material;
             if (!mat) return;
 
+            const hasEmissive = mat.isMeshStandardMaterial || mat.isMeshPhongMaterial || mat.isMeshLambertMaterial;
+
             switch (effect) {
                 case 'selected':
-                    mat.emissive = mat.emissive || new THREE.Color();
-                    mat.emissiveIntensity = 0.5;
-                    mat.emissive.set(SELECT_COLOR);
+                    if (hasEmissive) {
+                        mat.emissiveIntensity = 0.5;
+                        mat.emissive.set(SELECT_COLOR);
+                    } else if (mat.color) {
+                        if (!child.userData.baseColor) child.userData.baseColor = mat.color.getHex();
+                        mat.color.set(SELECT_COLOR);
+                    }
                     if (child.userData.originalScale) {
                         child.scale.copy(child.userData.originalScale).multiplyScalar(1.08);
                     }
                     break;
                 case 'hovered':
-                    mat.emissive = mat.emissive || new THREE.Color();
-                    mat.emissiveIntensity = 0.3;
-                    mat.emissive.set(HIGHLIGHT_COLOR);
+                    if (hasEmissive) {
+                        mat.emissiveIntensity = 0.3;
+                        mat.emissive.set(HIGHLIGHT_COLOR);
+                    } else if (mat.color) {
+                        if (!child.userData.baseColor) child.userData.baseColor = mat.color.getHex();
+                        mat.color.set(HIGHLIGHT_COLOR);
+                    }
                     break;
                 default:
-                    if (child.userData.baseEmissive) {
-                        mat.emissive.copy(child.userData.baseEmissive);
-                        mat.emissiveIntensity = child.userData.baseEmissiveIntensity || 0.15;
-                    } else {
-                        mat.emissiveIntensity = 0.15;
+                    if (hasEmissive) {
+                        if (child.userData.baseEmissive) {
+                            mat.emissive.copy(child.userData.baseEmissive);
+                            mat.emissiveIntensity = child.userData.baseEmissiveIntensity || 0.15;
+                        } else {
+                            mat.emissiveIntensity = 0.15;
+                        }
+                    } else if (child.userData.baseColor !== undefined) {
+                        mat.color.set(child.userData.baseColor);
                     }
                     if (child.userData.originalScale) {
                         child.scale.copy(child.userData.originalScale);
@@ -427,7 +487,7 @@ export class ClusterRenderer {
 
         const colorIdx = this.namespaceColorIndex++ % NAMESPACE_COLORS.length;
         const color = NAMESPACE_COLORS[colorIdx];
-        const planeGeom = new THREE.PlaneGeometry(20, 20);
+        const planeGeom = new THREE.PlaneGeometry(6, 6);
         const planeMat = new THREE.MeshStandardMaterial({
             color,
             transparent: true,
@@ -437,7 +497,7 @@ export class ClusterRenderer {
         });
         const plane = new THREE.Mesh(planeGeom, planeMat);
         plane.rotation.x = -Math.PI / 2;
-        plane.position.y = -0.01;
+        plane.position.y = -0.05;
         plane.receiveShadow = true;
         plane.userData.isNamespacePlane = true;
 
@@ -456,7 +516,7 @@ export class ClusterRenderer {
 
         entry.mesh.geometry.dispose();
         entry.mesh.geometry = new THREE.PlaneGeometry(width, depth);
-        entry.mesh.position.set(centerX, -0.01, centerZ);
+        entry.mesh.position.set(centerX, -0.05, centerZ);
     }
 
     addConnection(connection) {
@@ -534,7 +594,9 @@ export class ClusterRenderer {
         const delta = (now - this.lastFrameTime) / 1000;
         this.lastFrameTime = now;
 
-        if (!this.isPanning) {
+        this.controls.update();
+
+        if (!this._didDrag) {
             this._performPick(false);
         }
 
@@ -549,7 +611,7 @@ export class ClusterRenderer {
         const time = performance.now() * 0.001;
         for (const [id, group] of this.resourceMeshes) {
             if (group.userData.resourceType === 'Pod') {
-                group.position.y = (group.userData.baseY || 0) + Math.sin(time * 2 + id.charCodeAt(0)) * 0.05;
+                group.position.y = (group.userData.baseY || 0) + Math.sin(time * 2 + id.charCodeAt(0)) * 0.08;
             }
             if (group.userData.animate) {
                 group.userData.animate(time, delta);
@@ -561,8 +623,8 @@ export class ClusterRenderer {
         const group = this.resourceMeshes.get(resourceId);
         if (!group) return;
 
-        this.cameraTarget.copy(group.position);
-        this._updateCameraPosition();
+        this.controls.target.copy(group.position);
+        this.controls.update();
     }
 
     getScreenPosition(resourceId) {
@@ -578,20 +640,77 @@ export class ClusterRenderer {
         };
     }
 
+    _raycastGround(ndc) {
+        this.raycaster.setFromCamera(ndc, this.camera);
+        const intersection = new THREE.Vector3();
+        const hit = this.raycaster.ray.intersectPlane(this._groundPlane, intersection);
+        return hit ? intersection : null;
+    }
+
+    screenToGround(screenX, screenY) {
+        const rect = this.canvas.getBoundingClientRect();
+        const ndc = new THREE.Vector2(
+            ((screenX - rect.left) / rect.width) * 2 - 1,
+            -((screenY - rect.top) / rect.height) * 2 + 1
+        );
+        const pos = this._raycastGround(ndc);
+        return pos ? { x: pos.x, y: 0, z: pos.z } : null;
+    }
+
+    animateToPositions(targets, duration = 800) {
+        const startTime = performance.now();
+        const startPositions = new Map();
+
+        for (const [uid, target] of targets) {
+            const group = this.resourceMeshes.get(uid);
+            if (group) {
+                startPositions.set(uid, {
+                    x: group.position.x,
+                    y: group.position.y,
+                    z: group.position.z,
+                });
+            }
+        }
+
+        const animate = () => {
+            const elapsed = performance.now() - startTime;
+            const t = Math.min(elapsed / duration, 1);
+            const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+            for (const [uid, target] of targets) {
+                const group = this.resourceMeshes.get(uid);
+                const start = startPositions.get(uid);
+                if (!group || !start) continue;
+
+                group.position.x = start.x + (target.x - start.x) * ease;
+                group.position.y = start.y + (target.y - start.y) * ease;
+                group.position.z = start.z + (target.z - start.z) * ease;
+            }
+
+            this.connectionLines.updatePositions(this.resourceMeshes);
+
+            if (t < 1) {
+                requestAnimationFrame(animate);
+            }
+        };
+
+        requestAnimationFrame(animate);
+    }
+
     resetCamera() {
-        this.cameraFrustum = 15;
-        this.cameraTarget.set(0, 0, 0);
-        this._updateCameraPosition();
-        this._updateCameraProjection();
+        this.camera.position.set(18, 14, 18);
+        this.controls.target.set(0, 0, 0);
+        this.controls.update();
     }
 
     dispose() {
         this.stop();
 
+        this.controls.dispose();
+
         this.canvas.removeEventListener('mousemove', this._onMouseMove);
         this.canvas.removeEventListener('mousedown', this._onMouseDown);
         this.canvas.removeEventListener('mouseup', this._onMouseUp);
-        this.canvas.removeEventListener('wheel', this._onWheel);
         this.canvas.removeEventListener('contextmenu', this._onContextMenu);
         window.removeEventListener('resize', this._onResize);
 

@@ -164,6 +164,7 @@ export class GameEngine {
 
     this._gameTime = 0;
     this._realTime = 0;
+    this._lastTickEmit = 0;
     this._timeScale = 1;
     this._startTime = 0;
 
@@ -335,6 +336,20 @@ export class GameEngine {
       realTime: this._realTime,
       alpha,
     });
+
+    if (!this._lastTickEmit || this._realTime - this._lastTickEmit > 500) {
+      this._lastTickEmit = this._realTime;
+      const stats = this.cluster.getClusterStats();
+      this.eventBus.emit('tick', {
+        elapsed: this._gameTime,
+        gameTime: this._gameTime,
+        realTime: this._realTime,
+        fps: this._fps,
+        mode: this.mode,
+        metrics: { cpu: stats.cpu.percent, memory: stats.memory.percent },
+        clusterHealth: stats.cpu.percent > 90 || stats.memory.percent > 90 ? 'critical' : stats.cpu.percent > 70 || stats.memory.percent > 70 ? 'warning' : 'healthy',
+      });
+    }
 
     this._rafId = requestAnimationFrame((ts) => this._gameLoop(ts));
   }
@@ -787,6 +802,7 @@ export class GameEngine {
 
     this._gameTime = 0;
     this._realTime = 0;
+    this._lastTickEmit = 0;
     this._score = 0;
     this._level = 1;
     this._experience = 0;

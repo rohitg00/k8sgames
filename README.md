@@ -1,83 +1,70 @@
 # KubeOps
 
-Real-time Kubernetes cluster management simulation game. Deploy resources, handle incidents, master kubectl commands — all in your browser.
+Learn Kubernetes by playing. Deploy pods, fix CrashLoopBackOff, type real kubectl commands — all in a 3D sim that runs in your browser.
 
-## Game Modes
+**[Play Now](https://rohitg00.github.io/kubeops)**
 
-- **Campaign** (20 levels) — Learn K8s from pods to production across 5 chapters
-- **Chaos Mode** — Survive escalating cluster incidents, SRE training
-- **Sandbox** — Free cluster design with Architecture Advisor scoring (0-100)
-- **Challenges** — 10 timed scenarios: deploy apps, fix outages, race the clock
-
-## Features
-
-- **18 placeable K8s resources** with unique 3D shapes (Pod, Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob, Service, Ingress, NetworkPolicy, ConfigMap, Secret, PVC, HPA, Node, Namespace, ResourceQuota, CronJob)
-- **kubectl command bar** — type real commands (`get`, `describe`, `scale`, `logs`, `rollout`, `drain`) that affect the game world
-- **25 incident types** across Pod, Node, Network, Storage, Control Plane, and Workload categories
-- **Visual resource graph** — isometric 3D view with animated ownership chains and traffic flow particles
-- **Live metrics dashboard** — canvas-based CPU/memory/latency charts
-- **Architecture Advisor** — scores your cluster design across 10 categories
-- **YAML preview** — every resource shows generated YAML in real-time
-- **40 achievements** and 30-level XP progression (Novice to CKA-ready)
-
-## Controls
-
-| Key | Action |
-|-----|--------|
-| `/` | Open kubectl command bar |
-| `Space` | Pause / Resume |
-| `M` | Toggle metrics dashboard |
-| `Esc` | Back to menu |
-| `Delete` | Remove selected resource |
-| `1-9` | Quick-select resource from palette |
-| Right-click | Context menu (Scale, Logs, Restart, etc.) |
-| Mouse wheel | Zoom |
-| Middle-click drag | Pan |
-
-## How to Play
-
-1. Clone or download this repo
-2. Open `index.html` in a browser (no build step needed)
-3. Pick a game mode and start managing your cluster
+## Get Started
 
 ```bash
 git clone https://github.com/rohitg00/kubeops.git
 cd kubeops
-open index.html
+python3 -m http.server 8080
 ```
 
-## Tech Stack
+Open http://localhost:8080 and pick a mode. No install, no build, no dependencies.
 
-- Three.js r152 (isometric 3D rendering)
-- Tailwind CSS v3 (CDN)
-- Vanilla JavaScript (ES6 modules, no build step)
+## How to Play
 
-## Campaign Chapters
+1. Pick a game mode from the main menu
+2. Click resources from the left palette to place them in your cluster
+3. Drag resources to reposition them anywhere
+4. Click any resource to inspect it (status, YAML, kubectl describe)
+5. Right-click for actions (Scale, Delete, Logs, Restart)
+6. Press `/` to open the kubectl command bar
+7. Handle incidents as they appear — diagnose and fix like a real SRE
 
-| Chapter | Levels | Topic |
-|---------|--------|-------|
-| 1 | 1-4 | Foundations (Pods, Namespaces, Nodes) |
-| 2 | 5-8 | Workloads (Deployments, StatefulSets, Jobs) |
-| 3 | 9-12 | Networking (Services, Ingress, NetworkPolicies) |
-| 4 | 13-16 | State & Config (ConfigMaps, Secrets, PVCs) |
-| 5 | 17-20 | Production (HPA, RBAC, ResourceQuotas) |
+## Game Modes
 
-## File Structure
+| Mode | What You Do |
+|------|-------------|
+| **Campaign** | 20 levels across 5 chapters. Learn pods, deployments, networking, storage, and production K8s |
+| **Chaos** | Endless survival. Incidents escalate until your cluster breaks. How long can you last? |
+| **Sandbox** | Free build. Design any cluster, get scored 0-100 by the Architecture Advisor |
+| **Challenges** | 10 timed scenarios. Deploy apps, fix outages, race the clock |
 
-```
-kubeops/
-├── index.html
-├── style.css
-├── js/
-│   ├── engine/          (GameEngine, ClusterState, SimulationTick, IncidentEngine, ScoringEngine)
-│   ├── resources/       (ResourceBase + 5 resource modules)
-│   ├── rendering/       (ClusterRenderer, ResourceMeshes, ConnectionLines, ParticleTraffic)
-│   ├── ui/              (HUD, CommandBar, InspectorPanel, ContextMenu, MetricsDashboard, IncidentPanel, Minimap)
-│   ├── modes/           (CampaignMode, ChaosMode, SandboxMode, ChallengeMode)
-│   └── data/            (CampaignLevels, IncidentDefs, Achievements)
-├── README.md
-└── LICENSE
-```
+## Controls
+
+| Input | Action |
+|-------|--------|
+| `/` | kubectl command bar |
+| `Space` | Pause / Resume |
+| `M` | Metrics dashboard |
+| `Esc` | Back to menu |
+| `1-9` | Quick-select resource |
+| Left-click | Select resource |
+| Left-drag | Move resource or rotate camera |
+| Right-click | Context menu |
+| Right-drag | Pan |
+| Scroll | Zoom |
+
+Bottom toolbar: **Auto-Align** (K8s architecture layout) | **Reset View** | **YAML** (export cluster)
+
+## What's In It
+
+**17 K8s resources** — Pod, Deployment, ReplicaSet, StatefulSet, DaemonSet, Job, CronJob, Service, Ingress, NetworkPolicy, ConfigMap, Secret, PVC, Node, Namespace, HPA, ResourceQuota. Each has a unique 3D shape and color.
+
+**26 incidents** — OOMKilled, CrashLoopBackOff, ImagePullBackOff, node NotReady, DNS failures, PVC pending, API throttling, rollout stuck, and more. Investigate with kubectl describe/logs, then fix.
+
+**kubectl command bar** — type real commands: `get pods`, `describe deployment nginx`, `scale deployment nginx --replicas=3`, `logs pod-1`, `rollout status`, `drain node-1`. Tab completion included.
+
+**Architecture Advisor** — scores your cluster design across HA, security, scalability, cost, and 6 other categories.
+
+**40 achievements** and a 30-level XP system from Novice to CKA-ready.
+
+## Tech
+
+Three.js r152 + Tailwind CSS CDN + vanilla ES6 modules. No build step. ~17K lines across 30 files.
 
 ## License
 

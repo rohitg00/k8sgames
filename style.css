@@ -41,6 +41,7 @@ html, body {
   height: 100%;
   z-index: 0;
   display: block;
+  touch-action: none;
 }
 
 .glass {
@@ -117,20 +118,35 @@ html, body {
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
   overflow: hidden;
 }
 
+.menu-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  opacity: 0;
+  background: linear-gradient(135deg, rgba(50, 108, 229, 0.08), rgba(88, 166, 255, 0.04));
+  transition: opacity 0.3s ease;
+}
+
+.menu-btn:hover::before {
+  opacity: 1;
+}
+
 .menu-btn:hover {
-  border-color: var(--k8s-blue);
-  background: var(--bg-elevated);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(50, 108, 229, 0.15);
+  border-color: rgba(50, 108, 229, 0.6);
+  background: linear-gradient(135deg, var(--bg-elevated), rgba(28, 35, 51, 0.95));
+  transform: translateY(-3px);
+  box-shadow: 0 8px 32px rgba(50, 108, 229, 0.2), 0 0 0 1px rgba(50, 108, 229, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .menu-btn:active {
-  transform: translateY(0);
+  transform: translateY(-1px);
+  transition-duration: 0.1s;
 }
 
 .menu-btn-title {
@@ -181,16 +197,18 @@ html, body {
   left: 0;
   top: 48px;
   bottom: 0;
-  width: 64px;
+  width: 68px;
   z-index: 30;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px 0;
+  padding: 10px 0;
   gap: 2px;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
+  border-right: 1px solid rgba(50, 108, 229, 0.08);
+  background: rgba(13, 17, 23, 0.92);
 }
 
 #resource-palette::-webkit-scrollbar {
@@ -198,32 +216,36 @@ html, body {
 }
 
 .palette-item {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
+  width: 50px;
+  height: 50px;
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   cursor: grab;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid transparent;
   position: relative;
   flex-shrink: 0;
 }
 
 .palette-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: var(--border-subtle);
+  background: rgba(50, 108, 229, 0.1);
+  border-color: rgba(50, 108, 229, 0.25);
+  transform: scale(1.08);
+  box-shadow: 0 0 12px rgba(50, 108, 229, 0.1);
 }
 
 .palette-item:active {
   cursor: grabbing;
+  transform: scale(0.95);
 }
 
 .palette-item.selected {
   background: rgba(50, 108, 229, 0.2);
   border-color: var(--k8s-blue);
+  box-shadow: 0 0 16px rgba(50, 108, 229, 0.2), inset 0 0 8px rgba(50, 108, 229, 0.1);
 }
 
 .palette-icon {
@@ -295,10 +317,15 @@ html, body {
   inset: 0;
   z-index: 1;
   display: none;
+  pointer-events: none;
 }
 
 #game-container.active {
   display: block;
+}
+
+#game-container > * {
+  pointer-events: auto;
 }
 
 .drag-ghost {
@@ -318,7 +345,7 @@ html, body {
 #level-select {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: 110;
   display: none;
   align-items: center;
   justify-content: center;
@@ -397,7 +424,7 @@ html, body {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 110;
   display: none;
   align-items: center;
   justify-content: center;
@@ -752,4 +779,135 @@ html, body {
   font-weight: 600;
   white-space: nowrap;
   margin-left: 1rem;
+}
+
+#tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.3s ease;
+}
+
+#tutorial-overlay.fade-out {
+  animation: tutorialFadeOut 0.4s ease forwards;
+}
+
+.tutorial-card {
+  max-width: 480px;
+  width: 90%;
+  background: linear-gradient(135deg, rgba(22, 27, 34, 0.98), rgba(13, 17, 23, 0.98));
+  border: 1px solid rgba(50, 108, 229, 0.3);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 0 60px rgba(50, 108, 229, 0.15), 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.tutorial-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.tutorial-mode {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #326CE5, #58a6ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.5rem;
+}
+
+.tutorial-desc {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.5;
+}
+
+.tutorial-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+}
+
+.tutorial-tip {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.tutorial-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 70px;
+  padding: 0.25rem 0.5rem;
+  background: rgba(50, 108, 229, 0.15);
+  border: 1px solid rgba(50, 108, 229, 0.3);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #58a6ff;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}
+
+.tutorial-text {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
+}
+
+.tutorial-btn {
+  display: block;
+  width: 100%;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #326CE5, #2860d0);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.02em;
+}
+
+.tutorial-btn:hover {
+  background: linear-gradient(135deg, #3d7af0, #326CE5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(50, 108, 229, 0.4);
+}
+
+.tutorial-skip-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+}
+
+.tutorial-skip-label input {
+  accent-color: #326CE5;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes tutorialFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }

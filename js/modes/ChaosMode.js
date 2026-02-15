@@ -72,7 +72,7 @@ class ChaosMode {
   }
 
   setupCluster() {
-    const clusterState = this.gameEngine.getState();
+    const clusterState = this.gameEngine.cluster;
     if (!clusterState) return;
 
     clusterState.clear();

@@ -142,7 +142,7 @@ class CampaignMode {
   }
 
   setupCluster(levelDef) {
-    const clusterState = this.gameEngine.getState();
+    const clusterState = this.gameEngine.cluster;
     if (!clusterState) return;
 
     clusterState.clear();
@@ -179,7 +179,7 @@ class CampaignMode {
   }
 
   updateObjectives() {
-    const state = this.gameEngine.getState();
+    const state = this.gameEngine.cluster;
     if (!state) return;
 
     for (const obj of this.objectiveProgress) {

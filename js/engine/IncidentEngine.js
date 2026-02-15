@@ -254,7 +254,7 @@ class IncidentEngine {
   }
 
   selectRandomTarget(def) {
-    const state = this.gameEngine.getState();
+    const state = this.gameEngine.cluster;
     if (!state) return 'unknown';
 
     const candidates = [];
@@ -409,7 +409,7 @@ class IncidentEngine {
   }
 
   applyResolutionEffects(incident, actionId) {
-    const state = this.gameEngine.getState();
+    const state = this.gameEngine.cluster;
     if (!state) return;
 
     switch (incident.name) {

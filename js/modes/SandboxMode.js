@@ -45,7 +45,7 @@ class SandboxMode {
   }
 
   setupCluster(nodeCount) {
-    const clusterState = this.gameEngine.getState();
+    const clusterState = this.gameEngine.cluster;
     if (!clusterState) return;
 
     clusterState.clear();
@@ -60,13 +60,6 @@ class SandboxMode {
       });
     }
 
-    clusterState.addResource({
-      kind: 'Namespace',
-      name: 'default',
-      metadata: { name: 'default', labels: {} },
-      spec: {},
-      status: { phase: 'Active' }
-    });
   }
 
   update() {
@@ -74,7 +67,7 @@ class SandboxMode {
 
     this.elapsedTime = (Date.now() - this.startTime) / 1000;
 
-    const state = this.gameEngine.getState();
+    const state = this.gameEngine.cluster;
     if (state) {
       const allResources = state.getAllResources ? state.getAllResources() : [];
       this.resourceCount = allResources.length;
@@ -88,7 +81,7 @@ class SandboxMode {
   }
 
   addResource(kind, name, spec) {
-    const state = this.gameEngine.getState();
+    const state = this.gameEngine.cluster;
     if (!state) return false;
 
     if (!ALL_RESOURCE_TYPES.includes(kind)) return false;
@@ -120,7 +113,7 @@ class SandboxMode {
   }
 
   removeResource(kind, name) {
-    const state = this.gameEngine.getState();
+    const state = this.gameEngine.cluster;
     if (!state) return false;
 
     const removed = state.removeResource(kind, name);
@@ -132,7 +125,7 @@ class SandboxMode {
   }
 
   getArchitectureScore() {
-    const state = this.gameEngine.getState();
+    const state = this.gameEngine.cluster;
     if (!state) return null;
 
     this.architectureScore = this.scoringEngine.calculateArchitectureScore(state);
@@ -155,7 +148,7 @@ class SandboxMode {
   }
 
   exportClusterYAML() {
-    const state = this.gameEngine.getState();
+    const state = this.gameEngine.cluster;
     if (!state) return '';
 
     const allResources = state.getAllResources ? state.getAllResources() : [];

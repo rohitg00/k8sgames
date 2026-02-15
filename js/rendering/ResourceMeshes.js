@@ -28,31 +28,70 @@ function createStandardMaterial(color, status) {
     const statusColor = getStatusColor(status);
     return new THREE.MeshStandardMaterial({
         color,
-        metalness: 0.3,
-        roughness: 0.5,
+        metalness: 0.4,
+        roughness: 0.35,
         emissive: new THREE.Color(statusColor),
-        emissiveIntensity: EMISSIVE_INTENSITY
+        emissiveIntensity: 0.25
     });
+}
+
+function createGlowRing(color, radius) {
+    const ringGeo = new THREE.RingGeometry(radius * 0.8, radius * 1.2, 32);
+    const ringMat = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.15,
+        side: THREE.DoubleSide,
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.02;
+    return ring;
 }
 
 function createLabelSprite(text) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    canvas.width = 256;
-    canvas.height = 64;
+    canvas.width = 512;
+    canvas.height = 128;
 
-    ctx.clearRect(0, 0, 256, 64);
-    ctx.font = 'bold 28px monospace';
+    ctx.clearRect(0, 0, 512, 128);
+    ctx.font = 'bold 36px "Inter", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    ctx.fillStyle = 'rgba(13, 17, 23, 0.7)';
-    const metrics = ctx.measureText(text);
-    const textWidth = Math.min(metrics.width + 16, 256);
-    ctx.fillRect((256 - textWidth) / 2, 8, textWidth, 48);
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 2;
 
-    ctx.fillStyle = '#c9d1d9';
-    ctx.fillText(text, 128, 32);
+    ctx.fillStyle = 'rgba(13, 17, 23, 0.85)';
+    const metrics = ctx.measureText(text);
+    const textWidth = Math.min(metrics.width + 28, 500);
+    const rh = 56;
+    const rx = (512 - textWidth) / 2;
+    const ry = (128 - rh) / 2;
+    const r = 8;
+    ctx.beginPath();
+    ctx.moveTo(rx + r, ry);
+    ctx.lineTo(rx + textWidth - r, ry);
+    ctx.quadraticCurveTo(rx + textWidth, ry, rx + textWidth, ry + r);
+    ctx.lineTo(rx + textWidth, ry + rh - r);
+    ctx.quadraticCurveTo(rx + textWidth, ry + rh, rx + textWidth - r, ry + rh);
+    ctx.lineTo(rx + r, ry + rh);
+    ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - r);
+    ctx.lineTo(rx, ry + r);
+    ctx.quadraticCurveTo(rx, ry, rx + r, ry);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(50, 108, 229, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#e6edf3';
+    ctx.fillText(text, 256, 64, 480);
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.minFilter = THREE.LinearFilter;
@@ -64,7 +103,7 @@ function createLabelSprite(text) {
     });
 
     const sprite = new THREE.Sprite(spriteMat);
-    sprite.scale.set(3, 0.75, 1);
+    sprite.scale.set(3.5, 0.9, 1);
     sprite.userData.isLabel = true;
     return sprite;
 }
@@ -182,8 +221,10 @@ const CREATORS = {
         glow.userData.isGlow = true;
         group.add(glow);
 
+        group.add(createGlowRing(0x326CE5, 0.5));
+
         const label = createLabelSprite(resource.name || 'pod');
-        label.position.y = 1.0;
+        label.position.y = 0.8;
         group.add(label);
 
         group.userData.baseY = resource.y || 0;
@@ -212,8 +253,10 @@ const CREATORS = {
         badgeLabel.position.set(0.6, 0.55, 0.32);
         group.add(badgeLabel);
 
+        group.add(createGlowRing(0xf97316, 0.7));
+
         const label = createLabelSprite(resource.name || 'deploy');
-        label.position.y = 1.2;
+        label.position.y = 0.9;
         group.add(label);
         return group;
     },
@@ -231,8 +274,10 @@ const CREATORS = {
             mesh.castShadow = true;
             group.add(mesh);
         }
+        group.add(createGlowRing(0x388bfd, 0.6));
+
         const label = createLabelSprite(resource.name || 'rs');
-        label.position.y = count * 0.16 + 0.7;
+        label.position.y = count * 0.16 + 0.5;
         group.add(label);
         return group;
     },
@@ -255,8 +300,10 @@ const CREATORS = {
             ordLabel.position.set(mesh.position.x, 0.5, 0);
             group.add(ordLabel);
         }
+        group.add(createGlowRing(0x8957e5, 0.5));
+
         const label = createLabelSprite(resource.name || 'sts');
-        label.position.y = 1.0;
+        label.position.y = 0.8;
         group.add(label);
         return group;
     },
@@ -277,8 +324,10 @@ const CREATORS = {
         mesh.castShadow = true;
         group.add(mesh);
 
+        group.add(createGlowRing(0xd29922, 0.6));
+
         const label = createLabelSprite(resource.name || 'ds');
-        label.position.y = 1.2;
+        label.position.y = 0.9;
         group.add(label);
 
         group.userData.animate = (time) => {
@@ -307,8 +356,10 @@ const CREATORS = {
         ring.rotation.x = Math.PI / 2;
         group.add(ring);
 
+        group.add(createGlowRing(0x326CE5, 0.6));
+
         const label = createLabelSprite(resource.name || 'svc');
-        label.position.y = 1.2;
+        label.position.y = 0.9;
         group.add(label);
 
         group.userData.animate = (time) => {
@@ -331,8 +382,10 @@ const CREATORS = {
         const edges = new THREE.LineSegments(edgesGeom, edgesMat);
         group.add(edges);
 
+        group.add(createGlowRing(0x79c0ff, 0.5));
+
         const label = createLabelSprite(resource.name || 'ing');
-        label.position.y = 1.3;
+        label.position.y = 1.0;
         group.add(label);
 
         group.userData.animate = (time) => {
@@ -363,8 +416,10 @@ const CREATORS = {
         bottomCap.position.y = -0.42;
         group.add(bottomCap);
 
+        group.add(createGlowRing(0xe3b341, 0.4));
+
         const label = createLabelSprite(resource.name || 'cm');
-        label.position.y = 1.1;
+        label.position.y = 0.9;
         group.add(label);
         return group;
     },
@@ -393,8 +448,10 @@ const CREATORS = {
         bodyMesh.castShadow = true;
         group.add(bodyMesh);
 
+        group.add(createGlowRing(0x6e7681, 0.5));
+
         const label = createLabelSprite(resource.name || 'secret');
-        label.position.y = 1.2;
+        label.position.y = 0.9;
         group.add(label);
         return group;
     },
@@ -414,8 +471,10 @@ const CREATORS = {
         ring.position.y = 0.2;
         group.add(ring);
 
+        group.add(createGlowRing(0x56d364, 0.5));
+
         const label = createLabelSprite(resource.name || 'pvc');
-        label.position.y = 1.1;
+        label.position.y = 0.9;
         group.add(label);
         return group;
     },
@@ -439,8 +498,10 @@ const CREATORS = {
         const hub = new THREE.Mesh(hubGeom, new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.8 }));
         group.add(hub);
 
+        group.add(createGlowRing(0xd2a8ff, 0.5));
+
         const label = createLabelSprite(resource.name || 'hpa');
-        label.position.y = 1.2;
+        label.position.y = 0.9;
         group.add(label);
 
         group.userData.animate = (time) => {
@@ -467,8 +528,10 @@ const CREATORS = {
         mesh.castShadow = true;
         group.add(mesh);
 
+        group.add(createGlowRing(0xf0883e, 0.5));
+
         const label = createLabelSprite(resource.name || 'netpol');
-        label.position.y = 1.3;
+        label.position.y = 1.0;
         group.add(label);
         return group;
     },
@@ -493,32 +556,51 @@ const CREATORS = {
             group.add(stripe);
         }
 
+        group.add(createGlowRing(0xdb6d28, 0.5));
+
         const label = createLabelSprite(resource.name || 'quota');
-        label.position.y = 1.1;
+        label.position.y = 0.9;
         group.add(label);
         return group;
     },
 
     Node(resource) {
         const group = new THREE.Group();
-        const platformGeom = new THREE.BoxGeometry(4.0, 0.3, 3.0);
-        const platformMat = createStandardMaterial(0x21262d, resource.status);
+        const platformGeom = new THREE.BoxGeometry(3.0, 0.4, 2.2);
+        const platformMat = createStandardMaterial(0x30363d, resource.status);
         platformMat.metalness = 0.5;
-        platformMat.roughness = 0.6;
+        platformMat.roughness = 0.5;
         const platform = new THREE.Mesh(platformGeom, platformMat);
         platform.receiveShadow = true;
         platform.castShadow = true;
         group.add(platform);
 
         const borderGeom = new THREE.EdgesGeometry(platformGeom);
-        const borderMat = new THREE.LineBasicMaterial({ color: K8S_BLUE, transparent: true, opacity: 0.5 });
+        const borderMat = new THREE.LineBasicMaterial({ color: K8S_BLUE, transparent: true, opacity: 0.6 });
         const border = new THREE.LineSegments(borderGeom, borderMat);
         group.add(border);
 
-        const indicatorGeom = new THREE.SphereGeometry(0.12, 8, 8);
-        const indicatorMat = new THREE.MeshBasicMaterial({ color: getStatusColor(resource.status) });
+        for (let i = 0; i < 3; i++) {
+            const chipGeom = new THREE.BoxGeometry(0.35, 0.12, 0.35);
+            const chipMat = new THREE.MeshStandardMaterial({
+                color: 0x58a6ff,
+                emissive: new THREE.Color(0x326CE5),
+                emissiveIntensity: 0.3,
+                metalness: 0.7,
+                roughness: 0.3
+            });
+            const chip = new THREE.Mesh(chipGeom, chipMat);
+            chip.position.set(-0.6 + i * 0.6, 0.26, 0);
+            chip.castShadow = true;
+            group.add(chip);
+        }
+
+        const indicatorGeom = new THREE.SphereGeometry(0.18, 12, 12);
+        const indicatorMat = new THREE.MeshBasicMaterial({
+            color: getStatusColor(resource.status)
+        });
         const indicator = new THREE.Mesh(indicatorGeom, indicatorMat);
-        indicator.position.set(-1.8, 0.28, -1.3);
+        indicator.position.set(-1.2, 0.38, -0.8);
         group.add(indicator);
 
         const label = createLabelSprite(resource.name || 'node');
@@ -529,11 +611,11 @@ const CREATORS = {
 
     Namespace(resource) {
         const group = new THREE.Group();
-        const planeGeom = new THREE.PlaneGeometry(6, 6);
+        const planeGeom = new THREE.PlaneGeometry(2.5, 2.5);
         const planeMat = new THREE.MeshStandardMaterial({
             color: K8S_BLUE,
             transparent: true,
-            opacity: 0.06,
+            opacity: 0.04,
             side: THREE.DoubleSide,
             depthWrite: false
         });
@@ -543,7 +625,7 @@ const CREATORS = {
         group.add(plane);
 
         const borderGeom = new THREE.EdgesGeometry(planeGeom);
-        const borderMat = new THREE.LineBasicMaterial({ color: K8S_BLUE, transparent: true, opacity: 0.3 });
+        const borderMat = new THREE.LineBasicMaterial({ color: K8S_BLUE, transparent: true, opacity: 0.4 });
         const border = new THREE.LineSegments(borderGeom, borderMat);
         border.rotation.x = -Math.PI / 2;
         border.position.y = 0.01;
@@ -576,8 +658,10 @@ const CREATORS = {
         const waist = new THREE.Mesh(waistGeom, waistMat);
         group.add(waist);
 
+        group.add(createGlowRing(0x7ee787, 0.4));
+
         const label = createLabelSprite(resource.name || 'job');
-        label.position.y = 1.1;
+        label.position.y = 0.9;
         group.add(label);
 
         group.userData.animate = (time) => {
@@ -623,8 +707,10 @@ const CREATORS = {
             group.add(tick);
         }
 
+        group.add(createGlowRing(0xbc8cff, 0.5));
+
         const label = createLabelSprite(resource.name || 'cronjob');
-        label.position.y = 1.3;
+        label.position.y = 1.0;
         group.add(label);
 
         group.userData.animate = (time) => {
@@ -634,6 +720,9 @@ const CREATORS = {
         return group;
     }
 };
+
+CREATORS.PersistentVolumeClaim = CREATORS.PVC;
+CREATORS.HorizontalPodAutoscaler = CREATORS.HPA;
 
 export class ResourceMeshFactory {
     constructor() {
@@ -656,8 +745,10 @@ export class ResourceMeshFactory {
         mesh.castShadow = true;
         group.add(mesh);
 
+        group.add(createGlowRing(0x8b949e, 0.4));
+
         const label = createLabelSprite(resource.name || resource.type || '?');
-        label.position.y = 1.0;
+        label.position.y = 0.8;
         group.add(label);
         return group;
     }

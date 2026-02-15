@@ -87,6 +87,20 @@
   </div>
 
   <div id="game-container">
+    <div id="view-toolbar" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3 py-2 rounded-xl backdrop-blur-xl bg-white/5 border border-white/10 shadow-2xl">
+      <button id="btn-auto-align" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/80 hover:text-white bg-white/5 hover:bg-sky-500/20 border border-white/10 hover:border-sky-400/40 rounded-lg transition-all" title="Auto-align K8s architecture layout">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
+        Auto-Align
+      </button>
+      <button id="btn-reset-camera" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all" title="Reset camera to default view">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        Reset View
+      </button>
+      <button id="btn-export-yaml" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all" title="Export cluster as YAML">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+        YAML
+      </button>
+    </div>
     <div id="resource-palette" class="glass-dark">
       <div class="palette-section-label">Workloads</div>
 
@@ -413,13 +427,19 @@
       }
 
       async init() {
+        try {
+        console.log('[KubeOps] Creating GameEngine...');
         this.engine = new GameEngine({ mode: 'sandbox' });
+        console.log('[KubeOps] GameEngine created');
 
         const canvas = document.getElementById('game-canvas');
+        console.log('[KubeOps] Canvas:', canvas, canvas?.clientWidth, canvas?.clientHeight);
         this.renderer = new ClusterRenderer(canvas);
+        console.log('[KubeOps] ClusterRenderer created');
 
         this.incidentEngine = new IncidentEngine(this.engine);
         this.scoringEngine = new ScoringEngine(this.engine);
+        console.log('[KubeOps] Engines created');
 
         window.game = {
           engine: this.engine.eventBus,
@@ -438,6 +458,7 @@
         this.metrics = new MetricsDashboard();
         this.incidentPanel = new IncidentPanel();
         this.minimap = new Minimap();
+        console.log('[KubeOps] UI components created');
 
         this.bindMenuEvents();
         this.bindGameEvents();
@@ -446,10 +467,18 @@
         this.buildLevelSelect();
         this.buildChallengeSelect();
         this.buildAchievements();
+        console.log('[KubeOps] Init complete - menu ready');
 
         this.engine.onUpdate((dt) => {
           this.incidentEngine.tick(dt);
           this.syncRenderState();
+        });
+
+        this.engine.eventBus.on('cluster:reset', () => {
+          for (const uid of [...this.renderer.resourceMeshes.keys()]) {
+            this.renderer.removeResource(uid);
+          }
+          this.placedPositions.clear();
         });
 
         this.engine.eventBus.on('cluster:added', (data) => {
@@ -477,6 +506,14 @@
         this.renderer.onHover = (uid) => {
           this.engine.eventBus.emit('resource:hovered', { uid });
         };
+
+        this.renderer.onResourceMoved = (uid, pos) => {
+          this.placedPositions.set(uid, pos);
+        };
+        } catch (err) {
+          console.error('[KubeOps] Init error:', err);
+          throw err;
+        }
       }
 
       loadSettings() {
@@ -713,7 +750,10 @@
           const item = e.target.closest('.palette-item');
           if (!item) return;
           const kind = item.dataset.resource;
-          this.placeResource(kind);
+          const rect = canvas.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          this.placeResource(kind, cx, cy);
         });
 
         const canvas = document.getElementById('game-canvas');
@@ -745,6 +785,31 @@
             }
           }
         });
+
+        document.getElementById('btn-auto-align')?.addEventListener('click', () => {
+          this.autoAlignResources();
+        });
+
+        document.getElementById('btn-reset-camera')?.addEventListener('click', () => {
+          if (this.renderer) this.renderer.resetCamera();
+        });
+
+        document.getElementById('btn-export-yaml')?.addEventListener('click', () => {
+          if (this.modeInstance && typeof this.modeInstance.exportClusterYAML === 'function') {
+            this.modeInstance.exportClusterYAML();
+          } else {
+            const resources = this.engine.cluster.getAllResources();
+            const docs = resources.map(r => typeof r.toYAML === 'function' ? r.toYAML() : '').filter(Boolean);
+            const yaml = docs.join('\n---\n');
+            const blob = new Blob([yaml], { type: 'text/yaml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'kubeops-cluster.yaml';
+            a.click();
+            URL.revokeObjectURL(url);
+          }
+        });
       }
 
       placeResource(kind, screenX, screenY) {
@@ -756,22 +821,90 @@
         const name = `${kind.toLowerCase()}-${this.resourceCounter[kind]}`;
 
         const resource = new ResourceClass({ name, namespace: 'default' });
-        const pos = this.getPlacementPosition();
+
+        let pos = null;
+        if (screenX !== undefined && screenY !== undefined && this.renderer) {
+          pos = this.renderer.screenToGround(screenX, screenY);
+        }
+        if (!pos) {
+          pos = this.getPlacementPosition();
+        }
+
         this.placedPositions.set(resource.uid, pos);
         this.engine.cluster.add(resource);
       }
 
       getPlacementPosition() {
-        const spread = 3;
+        const spread = 4;
         const count = this.engine.cluster.getAllResources().length;
-        const cols = Math.ceil(Math.sqrt(count + 1));
-        const row = Math.floor(count / cols);
-        const col = count % cols;
+        const angle = count * 2.4;
+        const radius = 2 + Math.sqrt(count) * 1.8;
         return {
-          x: (col - cols / 2) * spread,
+          x: Math.cos(angle) * radius,
           y: 0,
-          z: (row - cols / 2) * spread,
+          z: Math.sin(angle) * radius,
         };
+      }
+
+      autoAlignResources() {
+        const cluster = this.engine.cluster;
+        if (!cluster) return;
+
+        const allResources = cluster.getAllResources();
+        if (allResources.length === 0) return;
+
+        const tiers = {
+          namespace:  { kinds: ['Namespace'], z: -10, spacing: 5 },
+          node:       { kinds: ['Node'], z: -5, spacing: 6 },
+          workload:   { kinds: ['Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet'], z: 0, spacing: 4 },
+          batch:      { kinds: ['Job', 'CronJob'], z: 3, spacing: 3.5 },
+          pod:        { kinds: ['Pod'], z: 6, spacing: 2.5 },
+          network:    { kinds: ['Service', 'Ingress', 'NetworkPolicy'], z: 10, spacing: 4 },
+          config:     { kinds: ['ConfigMap', 'Secret'], z: 14, spacing: 3.5 },
+          storage:    { kinds: ['PersistentVolumeClaim', 'PersistentVolume', 'StorageClass'], z: 17, spacing: 4 },
+          scaling:    { kinds: ['HorizontalPodAutoscaler', 'ResourceQuota', 'LimitRange', 'PodDisruptionBudget'], z: 20, spacing: 3.5 },
+          rbac:       { kinds: ['ServiceAccount', 'Role', 'ClusterRole', 'RoleBinding', 'ClusterRoleBinding'], z: 23, spacing: 3 },
+        };
+
+        const targets = new Map();
+
+        for (const [, tier] of Object.entries(tiers)) {
+          const resources = allResources.filter(r => tier.kinds.includes(r.kind));
+          if (resources.length === 0) continue;
+
+          const totalWidth = (resources.length - 1) * tier.spacing;
+          const startX = -totalWidth / 2;
+
+          resources.forEach((r, i) => {
+            const uid = r.uid || r.metadata?.uid;
+            targets.set(uid, {
+              x: startX + i * tier.spacing,
+              y: 0,
+              z: tier.z,
+            });
+          });
+        }
+
+        const unmatched = allResources.filter(r => {
+          const uid = r.uid || r.metadata?.uid;
+          return !targets.has(uid);
+        });
+        if (unmatched.length > 0) {
+          const startX = -(unmatched.length - 1) * 3 / 2;
+          unmatched.forEach((r, i) => {
+            targets.set(r.uid || r.metadata?.uid, { x: startX + i * 3, y: 0, z: 26 });
+          });
+        }
+
+        this.renderer.animateToPositions(targets, 800);
+
+        for (const [uid, pos] of targets) {
+          this.placedPositions.set(uid, pos);
+        }
+
+        setTimeout(() => {
+          this.renderer.resetCamera();
+        }, 200);
       }
 
       startMode(mode) {
@@ -797,6 +930,10 @@
         document.getElementById('challenge-select').classList.remove('active');
         document.getElementById('game-container').classList.add('active');
 
+        for (const uid of [...this.renderer.resourceMeshes.keys()]) {
+          this.renderer.removeResource(uid);
+        }
+        this.placedPositions.clear();
         this.engine.reset();
         this.engine.setMode(mode);
         this.engine.setDifficulty(this.settings.difficulty);
@@ -812,34 +949,44 @@
 
         this.applySettings();
 
-        switch (mode) {
-          case 'campaign':
-            this.modeInstance = new CampaignMode(this.engine, this.incidentEngine, this.scoringEngine);
-            this.modeInstance.startLevel(levelOrChallenge || 1);
-            break;
-          case 'chaos':
-            this.modeInstance = new ChaosMode(this.engine, this.incidentEngine, this.scoringEngine);
-            this.modeInstance.start();
-            break;
-          case 'sandbox':
-            this.modeInstance = new SandboxMode(this.engine, this.scoringEngine);
-            this.modeInstance.start();
-            break;
-          case 'challenge':
-            this.modeInstance = new ChallengeMode(this.engine, this.incidentEngine, this.scoringEngine);
-            this.modeInstance.startChallenge(levelOrChallenge || 1);
-            break;
+        if (!localStorage.getItem('kubeops_skip_tutorial')) {
+            this.showTutorial(mode);
         }
 
         this.renderer.start();
         this.engine.start();
+
+        try {
+          switch (mode) {
+            case 'campaign':
+              this.modeInstance = new CampaignMode(this.engine, this.incidentEngine, this.scoringEngine);
+              this.modeInstance.startLevel(levelOrChallenge || 1);
+              break;
+            case 'chaos':
+              this.modeInstance = new ChaosMode(this.engine, this.incidentEngine, this.scoringEngine);
+              this.modeInstance.start();
+              break;
+            case 'sandbox':
+              this.modeInstance = new SandboxMode(this.engine, this.scoringEngine);
+              this.modeInstance.start();
+              break;
+            case 'challenge':
+              this.modeInstance = new ChallengeMode(this.engine, this.incidentEngine, this.scoringEngine);
+              this.modeInstance.startChallenge(levelOrChallenge || 1);
+              break;
+          }
+        } catch (err) {
+          console.error(`Failed to start ${mode} mode:`, err);
+        }
       }
 
       returnToMenu() {
         this.engine.stop();
         this.renderer.stop();
-        if (this.modeInstance && this.modeInstance.cleanup) {
-          this.modeInstance.cleanup();
+        if (this.modeInstance) {
+          if (this.modeInstance.exit) this.modeInstance.exit();
+          else if (this.modeInstance.cleanup) this.modeInstance.cleanup();
+          else if (this.modeInstance.destroy) this.modeInstance.destroy();
         }
         this.modeInstance = null;
         this.currentMode = null;
@@ -876,6 +1023,84 @@
             this.renderer.particleSystem.enabled = this.settings.particles;
           }
         }
+      }
+
+      showTutorial(mode) {
+        const existing = document.getElementById('tutorial-overlay');
+        if (existing) existing.remove();
+
+        const tips = {
+            sandbox: [
+                { key: 'Click', desc: 'Click resources in the left palette to place them in your cluster' },
+                { key: 'Right-click', desc: 'Right-click any resource for options (scale, delete, inspect)' },
+                { key: '/', desc: 'Open the kubectl command bar to type real commands' },
+                { key: 'Drag', desc: 'Drag resources from the palette onto the canvas' },
+                { key: 'Navigate', desc: 'Left-drag to rotate, right-drag to pan, scroll to zoom' },
+                { key: 'Esc', desc: 'Return to main menu' },
+            ],
+            chaos: [
+                { key: 'Survive', desc: 'Keep your cluster healthy as incidents escalate' },
+                { key: '/', desc: 'Use kubectl commands to diagnose and fix issues' },
+                { key: 'Alerts', desc: 'Click the bell icon to see active incidents' },
+                { key: 'Resolve', desc: 'Fix incidents quickly for combo bonuses and XP' },
+                { key: 'Health', desc: 'If cluster health hits 0, game over' },
+                { key: 'Esc', desc: 'Return to main menu' },
+            ],
+            campaign: [
+                { key: 'Objectives', desc: 'Complete all objectives to pass each level' },
+                { key: 'Deploy', desc: 'Place the required Kubernetes resources' },
+                { key: '/', desc: 'Use kubectl commands for advanced operations' },
+                { key: 'Stars', desc: 'Complete faster with fewer hints for more stars' },
+                { key: 'Esc', desc: 'Return to main menu' },
+            ],
+            challenge: [
+                { key: 'Timer', desc: 'Complete objectives before time runs out' },
+                { key: 'Deploy', desc: 'Place and configure the required resources' },
+                { key: '/', desc: 'Use kubectl commands for speed' },
+                { key: 'Esc', desc: 'Return to main menu' },
+            ],
+        };
+
+        const modeTips = tips[mode] || tips.sandbox;
+        const modeNames = { sandbox: 'Sandbox Mode', chaos: 'Chaos Mode', campaign: 'Campaign', challenge: 'Challenge' };
+        const modeDescs = {
+            sandbox: 'Build and manage your cluster freely. Place resources, experiment with configurations.',
+            chaos: 'Your cluster is under attack. Diagnose and resolve incidents to survive.',
+            campaign: 'Learn Kubernetes concepts step by step through guided levels.',
+            challenge: 'Race against the clock to complete Kubernetes tasks.',
+        };
+
+        const overlay = document.createElement('div');
+        overlay.id = 'tutorial-overlay';
+        overlay.innerHTML = `
+            <div class="tutorial-card">
+                <div class="tutorial-header">
+                    <div class="tutorial-mode">${modeNames[mode] || mode}</div>
+                    <div class="tutorial-desc">${modeDescs[mode] || ''}</div>
+                </div>
+                <div class="tutorial-tips">
+                    ${modeTips.map(t => `
+                        <div class="tutorial-tip">
+                            <span class="tutorial-key">${t.key}</span>
+                            <span class="tutorial-text">${t.desc}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <button id="tutorial-start" class="tutorial-btn">Start Playing</button>
+                <label class="tutorial-skip-label">
+                    <input type="checkbox" id="tutorial-skip-check"> Don't show again
+                </label>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        document.getElementById('tutorial-start').addEventListener('click', () => {
+            if (document.getElementById('tutorial-skip-check').checked) {
+                localStorage.setItem('kubeops_skip_tutorial', 'true');
+            }
+            overlay.classList.add('fade-out');
+            setTimeout(() => overlay.remove(), 400);
+        });
       }
 
       buildLevelSelect() {
