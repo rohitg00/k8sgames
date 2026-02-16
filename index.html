@@ -494,29 +494,9 @@
       }
 
       async init() {
-        try {
-        console.log('[K8sGames] Creating GameEngine...');
         this.engine = new GameEngine({ mode: 'sandbox' });
-        console.log('[K8sGames] GameEngine created');
-
-        const canvas = document.getElementById('game-canvas');
-        console.log('[K8sGames] Canvas:', canvas, canvas?.clientWidth, canvas?.clientHeight);
-        this.renderer = new ClusterRenderer(canvas);
-        console.log('[K8sGames] ClusterRenderer created');
-
         this.incidentEngine = new IncidentEngine(this.engine);
         this.scoringEngine = new ScoringEngine(this.engine);
-        console.log('[K8sGames] Engines created');
-
-        window.game = {
-          engine: this.engine.eventBus,
-          cluster: this.engine.cluster,
-          renderer: this.renderer,
-          gameEngine: this.engine,
-          incidentEngine: this.incidentEngine,
-          scoringEngine: this.scoringEngine,
-          app: this,
-        };
 
         this.hud = new HUD();
         this.commandBar = new CommandBar();
@@ -525,7 +505,16 @@
         this.metrics = new MetricsDashboard();
         this.incidentPanel = new IncidentPanel();
         this.minimap = new Minimap();
-        console.log('[K8sGames] UI components created');
+
+        window.game = {
+          engine: this.engine.eventBus,
+          cluster: this.engine.cluster,
+          renderer: null,
+          gameEngine: this.engine,
+          incidentEngine: this.incidentEngine,
+          scoringEngine: this.scoringEngine,
+          app: this,
+        };
 
         this.bindMenuEvents();
         this.bindGameEvents();
@@ -534,7 +523,26 @@
         this.buildLevelSelect();
         this.buildChallengeSelect();
         this.buildAchievements();
-        console.log('[K8sGames] Init complete - menu ready');
+
+        const testCanvas = document.createElement('canvas');
+        const gl = testCanvas.getContext('webgl2') || testCanvas.getContext('webgl');
+        if (!gl) {
+          this._webglFailed = true;
+          this._showWebGLError();
+          return;
+        }
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+
+        const canvas = document.getElementById('game-canvas');
+
+        try {
+          this.renderer = new ClusterRenderer(canvas);
+          window.game.renderer = this.renderer;
+        } catch (err) {
+          this._webglFailed = true;
+          this._showWebGLError();
+          return;
+        }
 
         this.engine.onUpdate((dt) => {
           this.incidentEngine.tick(dt);
@@ -577,10 +585,28 @@
         this.renderer.onResourceMoved = (uid, pos) => {
           this.placedPositions.set(uid, pos);
         };
-        } catch (err) {
-          console.error('[K8sGames] Init error:', err);
-          throw err;
-        }
+      }
+
+      _showWebGLError() {
+        const overlay = document.createElement('div');
+        overlay.id = 'webgl-error';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(13,17,23,0.95);';
+        overlay.innerHTML = `
+          <div style="text-align:center;max-width:440px;padding:2rem;">
+            <div style="font-size:3rem;margin-bottom:1rem;">&#x1F6A7;</div>
+            <h2 style="color:#f85149;font-size:1.3rem;margin-bottom:0.75rem;">WebGL Not Available</h2>
+            <p style="color:rgba(255,255,255,0.6);font-size:0.85rem;line-height:1.6;margin-bottom:1.5rem;">
+              K8s Games requires WebGL to render the 3D cluster view. Your browser has WebGL disabled or your GPU is not supported.
+            </p>
+            <div style="color:rgba(255,255,255,0.4);font-size:0.75rem;line-height:1.8;text-align:left;background:rgba(255,255,255,0.03);padding:1rem;border-radius:8px;border:1px solid rgba(255,255,255,0.06);">
+              <strong style="color:rgba(255,255,255,0.7);">Try these fixes:</strong><br>
+              1. Enable hardware acceleration in browser settings<br>
+              2. Update your graphics drivers<br>
+              3. Try a different browser (Chrome, Firefox, Edge)<br>
+              4. Disable browser extensions that block WebGL
+            </div>
+          </div>`;
+        document.body.appendChild(overlay);
       }
 
       loadSettings() {
@@ -1271,6 +1297,11 @@
       }
 
       launchGame(mode, levelOrChallenge) {
+        if (this._webglFailed) {
+          this._showWebGLError();
+          return;
+        }
+
         document.getElementById('main-menu').classList.add('hidden');
         document.getElementById('level-select').classList.remove('active');
         document.getElementById('challenge-select').classList.remove('active');
@@ -1789,7 +1820,12 @@
     }
 
     const app = new K8sGamesApp();
-    app.init().catch(err => console.error('K8sGames init error:', err));
+    app.init().catch(err => {
+      console.error('K8sGames init error:', err);
+      if (!document.getElementById('webgl-error')) {
+        app._showWebGLError();
+      }
+    });
 
     fetch('https://api.github.com/repos/rohitg00/k8sgames')
       .then(r => r.json())
