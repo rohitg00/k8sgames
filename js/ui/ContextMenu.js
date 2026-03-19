@@ -182,16 +182,58 @@ export class ContextMenu {
   _executeAction(event) {
     if (!this.resource) return;
     const engine = window.game?.engine;
+    const cluster = window.game?.cluster;
+    const gameEngine = window.game?.gameEngine;
     if (!engine) return;
 
-    const data = {
-      uid: this.resource.metadata?.uid,
-      kind: this.resource.kind,
-      name: this.resource.metadata?.name,
-      namespace: this.resource.metadata?.namespace || 'default',
-    };
+    const uid = this.resource.metadata?.uid;
+    const kind = this.resource.kind;
+    const name = this.resource.metadata?.name;
+    const namespace = this.resource.metadata?.namespace;
 
-    engine.emit(event, data);
+    switch (event) {
+      case 'resource:delete':
+        if (gameEngine) {
+          gameEngine.queueCommand({ type: 'delete', kind, name, namespace });
+        } else if (cluster) {
+          cluster.remove(uid);
+        }
+        break;
+      case 'resource:describe':
+        engine.emit('resource:selected', { uid });
+        break;
+      case 'deployment:scale':
+        engine.emit('ui:scale-dialog', { uid, kind, name, namespace });
+        break;
+      case 'deployment:restart':
+        if (gameEngine) {
+          gameEngine.queueCommand({ type: 'rollout', subcommand: 'restart', kind, name, namespace });
+        }
+        break;
+      case 'deployment:rollback':
+        if (gameEngine) {
+          gameEngine.queueCommand({ type: 'rollout', subcommand: 'undo', kind, name, namespace });
+        }
+        break;
+      case 'node:cordon':
+        if (gameEngine) gameEngine.queueCommand({ type: 'cordon', name });
+        break;
+      case 'node:uncordon':
+        if (gameEngine) gameEngine.queueCommand({ type: 'uncordon', name });
+        break;
+      case 'node:drain':
+        if (gameEngine) gameEngine.queueCommand({ type: 'drain', name });
+        break;
+      case 'pod:logs':
+        engine.emit('ui:run-command', { command: namespace ? `logs ${name} -n ${namespace}` : `logs ${name}` });
+        break;
+      case 'pod:exec':
+        engine.emit('ui:run-command', { command: namespace ? `exec -it ${name} -n ${namespace} -- /bin/sh` : `exec -it ${name} -- /bin/sh` });
+        break;
+      default:
+        engine.emit(event, { uid, kind, name, namespace });
+        break;
+    }
   }
 
   _escapeHTML(str) {

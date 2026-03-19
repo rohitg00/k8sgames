@@ -424,6 +424,7 @@
 
   <script type="module">
     import { GameEngine, GAME_MODES, GAME_STATES } from './js/engine/GameEngine.js';
+    import { isClusterScopedKind } from './js/engine/ClusterState.js';
     import { ClusterRenderer } from './js/rendering/ClusterRenderer.js';
     import { IncidentEngine } from './js/engine/IncidentEngine.js';
     import { ScoringEngine } from './js/engine/ScoringEngine.js';
@@ -750,6 +751,10 @@
         this.engine.eventBus.on('ui:edit-resource', (data) => {
           this._showEditDialog(data.uid);
         });
+
+        this.engine.eventBus.on('ui:scale-dialog', (data) => {
+          this._showScaleDialog(data);
+        });
       }
 
       bindKeyboard() {
@@ -880,7 +885,7 @@
             const uid = this.renderer.selectedResource;
             const resource = this.engine.cluster.resources.get(uid);
             if (resource) {
-              this.engine.eventBus.emit('resource:context-menu', {
+              this.engine.eventBus.emit('resource:contextmenu', {
                 uid,
                 resource,
                 x: e.clientX,
@@ -925,7 +930,15 @@
         if (!ResourceClass) return;
 
         this._showNamePrompt(kind, (chosenName) => {
-          const resource = new ResourceClass({ name: chosenName, namespace: 'default' });
+          const ns = isClusterScopedKind(kind) ? '' : 'default';
+          const resource = new ResourceClass({ name: chosenName, namespace: ns });
+
+          if (kind === 'Node') {
+            resource.spec.cpu = resource.spec.cpu || '4';
+            resource.spec.memory = resource.spec.memory || '8Gi';
+            resource.setPhase('Running');
+            resource.setCondition('Ready', 'True', 'KubeletReady');
+          }
 
           if (kind === 'Deployment' || kind === 'StatefulSet' || kind === 'DaemonSet') {
             resource.setLabel('app', chosenName);
@@ -1203,6 +1216,43 @@
           this.engine.cluster.update(uid, updates);
           resource.recordEvent('Normal', 'Updated', `Resource updated via editor`);
           close();
+        });
+      }
+
+      _showScaleDialog(data) {
+        const resource = this.engine.cluster.getResource(data.uid);
+        if (!resource) return;
+        const current = resource.spec?.replicas ?? 1;
+        const overlay = document.createElement('div');
+        overlay.id = 'scale-dialog-overlay';
+        overlay.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm';
+        overlay.innerHTML = `
+          <div class="w-64 rounded-xl bg-gray-900/95 border border-white/10 shadow-2xl p-4">
+            <div class="text-xs text-white/40 font-medium uppercase tracking-wider mb-1">Scale ${data.kind}</div>
+            <div class="text-sm text-white/80 font-semibold mb-3">${data.name}</div>
+            <input id="scale-input" type="number" min="0" max="20" value="${current}" class="w-full px-3 py-2 text-sm text-white bg-black/40 border border-white/15 rounded-lg outline-none focus:border-sky-500/50 font-mono" />
+            <div class="flex gap-2 mt-3">
+              <button id="scale-ok" class="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-sky-600 hover:bg-sky-500 rounded-lg transition-colors">Scale</button>
+              <button id="scale-cancel" class="px-3 py-1.5 text-xs font-medium text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors">Cancel</button>
+            </div>
+          </div>`;
+        document.body.appendChild(overlay);
+        const input = document.getElementById('scale-input');
+        input.select();
+        input.focus();
+        const close = () => overlay.remove();
+        const submit = () => {
+          const replicas = parseInt(input.value, 10);
+          if (!isNaN(replicas) && replicas >= 0) {
+            this.engine.queueCommand({ type: 'scale', kind: data.kind, name: data.name, namespace: data.namespace, replicas });
+          }
+          close();
+        };
+        document.getElementById('scale-ok').addEventListener('click', submit);
+        document.getElementById('scale-cancel').addEventListener('click', close);
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') submit();
+          if (e.key === 'Escape') close();
         });
       }
 

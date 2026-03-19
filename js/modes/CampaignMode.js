@@ -148,17 +148,22 @@ class CampaignMode {
     clusterState.clear();
 
     for (const resource of levelDef.startingResources) {
-      clusterState.addResource({
+      const ns = resource.spec?.namespace || 'default';
+      const added = clusterState.addResource({
         kind: resource.kind,
         name: resource.name,
         metadata: {
           name: resource.name,
-          namespace: resource.spec?.namespace || 'default',
+          namespace: ns,
           labels: {}
         },
         spec: resource.spec || {},
         status: { phase: 'Running' }
       });
+
+      if (resource.kind === 'Node' && added) {
+        added.setCondition('Ready', 'True', 'KubeletReady');
+      }
     }
   }
 
