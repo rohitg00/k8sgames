@@ -409,9 +409,12 @@ export class CommandBar {
     const res = resources.find(r => r.metadata?.name === name);
     if (!res) return { error: true, message: `Error from server (NotFound): ${kind.toLowerCase()}s "${name}" not found` };
 
-    const oldReplicas = res.spec?.replicas || 0;
-    if (res.spec) res.spec.replicas = replicas;
-    engine.emit('resource:scaled', { uid: res.metadata.uid, kind, name, replicas, oldReplicas });
+    const gameEngine = window.game?.gameEngine;
+    if (gameEngine) {
+      gameEngine.queueCommand({ type: 'scale', kind, name, namespace: res.metadata?.namespace || 'default', replicas });
+    } else {
+      if (res.spec) res.spec.replicas = replicas;
+    }
     engine.emit('xp:gain', { amount: 10 });
     return { error: false, message: `${kind.toLowerCase()}.apps/${name} scaled` };
   }
@@ -422,12 +425,17 @@ export class CommandBar {
     if (!kind) return { error: true, message: `error: the server doesn't have a resource type "${args[0]}"` };
 
     const name = args[1];
+    const ns = args.includes('-n') ? args[args.indexOf('-n') + 1] : undefined;
     const resources = cluster.getResourcesByKind(kind);
-    const res = resources.find(r => r.metadata?.name === name);
+    const res = resources.find(r => r.metadata?.name === name && (!ns || r.metadata?.namespace === ns));
     if (!res) return { error: true, message: `Error from server (NotFound): ${kind.toLowerCase()}s "${name}" not found` };
 
-    cluster.removeResource(res.metadata.uid);
-    engine.emit('resource:deleted', { uid: res.metadata.uid, kind, name });
+    const gameEngine = window.game?.gameEngine;
+    if (gameEngine) {
+      gameEngine.queueCommand({ type: 'delete', kind, name, namespace: res.metadata?.namespace || 'default' });
+    } else {
+      cluster.remove(res.uid);
+    }
     engine.emit('xp:gain', { amount: 5 });
     return { error: false, message: `${kind.toLowerCase()} "${name}" deleted` };
   }
@@ -439,17 +447,23 @@ export class CommandBar {
     const filename = args[fFlag + 1];
     let kind = 'Pod';
     if (filename.includes('deploy')) kind = 'Deployment';
-    else if (filename.includes('svc')) kind = 'Service';
+    else if (filename.includes('svc') || filename.includes('service')) kind = 'Service';
+    else if (filename.includes('node')) kind = 'Node';
     const name = filename.replace(/\.(yaml|yml|json)$/, '').replace(/^.*\//, '');
 
-    const uid = `${kind.toLowerCase()}-${name}-${Date.now()}`;
-    cluster.addResource(kind, {
-      metadata: { uid, name, namespace: 'default', creationTimestamp: new Date().toISOString(), labels: {}, annotations: {} },
-      spec: kind === 'Deployment' ? { replicas: 1, strategy: { type: 'RollingUpdate' } } : {},
-      status: kind === 'Pod' ? { phase: 'Pending' } : kind === 'Deployment' ? { readyReplicas: 0, availableReplicas: 0 } : {}
+    const added = cluster.addResource({
+      kind,
+      name,
+      metadata: { name, namespace: 'default', labels: {}, annotations: {} },
+      spec: kind === 'Deployment' ? { replicas: 1, strategy: { type: 'RollingUpdate' } } : kind === 'Node' ? { cpu: '4', memory: '8Gi' } : {},
+      status: kind === 'Pod' ? { phase: 'Pending' } : kind === 'Node' ? { phase: 'Running' } : {}
     });
 
-    engine.emit('resource:applied', { uid, kind, name });
+    if (kind === 'Node' && added) {
+      added.setCondition('Ready', 'True', 'KubeletReady');
+    }
+
+    engine.emit('resource:applied', { kind, name });
     engine.emit('xp:gain', { amount: 15 });
     return { error: false, message: `${kind.toLowerCase()}/${name} created` };
   }
@@ -469,6 +483,7 @@ export class CommandBar {
       Deployment: { spec: { replicas: 1, strategy: { type: 'RollingUpdate' } }, status: { readyReplicas: 0 } },
       Service: { spec: { type: 'ClusterIP', ports: [{ port: 80, targetPort: 80 }] }, status: {} },
       Namespace: { spec: {}, status: { phase: 'Active' } },
+      Node: { spec: { cpu: '4', memory: '8Gi' }, status: { phase: 'Running' } },
       ConfigMap: { spec: { data: {} }, status: {} },
       Secret: { spec: { type: 'Opaque', data: {} }, status: {} },
       Job: { spec: { completions: 1, parallelism: 1 }, status: { active: 0, succeeded: 0, failed: 0 } },
@@ -478,7 +493,7 @@ export class CommandBar {
     };
 
     const def = defaults[kind] || { spec: {}, status: {} };
-    cluster.addResource({
+    const added = cluster.addResource({
       kind,
       name,
       metadata: { uid, name, namespace: ns, creationTimestamp: new Date().toISOString(), labels: { app: name }, annotations: {} },
@@ -486,7 +501,11 @@ export class CommandBar {
       status: def.status
     });
 
-    engine.emit('resource:created', { uid, kind, name });
+    if (kind === 'Node' && added) {
+      added.setCondition('Ready', 'True', 'KubeletReady');
+    }
+
+    engine.emit('resource:created', { kind, name });
     engine.emit('xp:gain', { amount: 15 });
     return { error: false, message: `${kind.toLowerCase()}/${name} created` };
   }
@@ -583,7 +602,12 @@ export class CommandBar {
     const node = nodes.find(n => n.metadata?.name === name);
     if (!node) return { error: true, message: `Error from server (NotFound): nodes "${name}" not found` };
 
-    engine.emit('node:drain', { uid: node.metadata.uid, name });
+    const gameEngine = window.game?.gameEngine;
+    if (gameEngine) {
+      gameEngine.queueCommand({ type: 'drain', name, force: args.includes('--force') });
+    } else {
+      node.spec.unschedulable = true;
+    }
     engine.emit('xp:gain', { amount: 20 });
     return { error: false, message: `node/${name} cordoned\nnode/${name} drained` };
   }
@@ -596,7 +620,12 @@ export class CommandBar {
     const node = nodes.find(n => n.metadata?.name === name);
     if (!node) return { error: true, message: `Error from server (NotFound): nodes "${name}" not found` };
 
-    engine.emit(cordon ? 'node:cordon' : 'node:uncordon', { uid: node.metadata.uid, name });
+    const gameEngine = window.game?.gameEngine;
+    if (gameEngine) {
+      gameEngine.queueCommand({ type: cordon ? 'cordon' : 'uncordon', name });
+    } else {
+      node.spec.unschedulable = cordon;
+    }
     engine.emit('xp:gain', { amount: 5 });
     return { error: false, message: `node/${name} ${cordon ? 'cordoned' : 'uncordoned'}` };
   }

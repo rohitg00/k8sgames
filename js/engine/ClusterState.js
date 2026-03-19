@@ -582,7 +582,12 @@ export class ClusterState {
     const node = this.getByName('Node', nodeName, '');
     if (!node) return null;
 
-    const capacity = node.status.capacity || { cpu: 4000, memory: 8192 };
+    const cpuSpec = node.spec.cpu || node.status.capacity?.cpu;
+    const memSpec = node.spec.memory || node.status.capacity?.memory;
+    const capacity = {
+      cpu: cpuSpec ? this._parseCpu(cpuSpec) : 4000,
+      memory: memSpec ? this._parseMemory(memSpec) : 8192,
+    };
     const pods = this.getByKind('Pod').filter(
       (p) => p.spec.nodeName === nodeName && (p.status.phase === 'Running' || p.status.phase === 'Pending')
     );
@@ -715,9 +720,13 @@ export class ClusterState {
   }
 
   addResource(obj) {
+    const CLUSTER_SCOPED = ['Node', 'Namespace', 'PersistentVolume', 'StorageClass', 'ClusterRole', 'ClusterRoleBinding'];
+    const isClusterScoped = CLUSTER_SCOPED.includes(obj.kind);
+    const ns = isClusterScoped ? '' : (obj.metadata?.namespace || 'default');
+
     const resource = new ResourceBase(obj.kind, {
       name: obj.name || obj.metadata?.name || 'unnamed',
-      namespace: obj.metadata?.namespace || 'default',
+      namespace: ns,
       labels: obj.metadata?.labels || {},
       annotations: obj.metadata?.annotations || {},
     });
