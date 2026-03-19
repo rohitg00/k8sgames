@@ -374,11 +374,13 @@ export class CommandBar {
   }
 
   _cmdLogs(args, cluster) {
-    const name = args[0];
+    const nsIdx = args.indexOf('-n');
+    const ns = nsIdx >= 0 ? args[nsIdx + 1] : undefined;
+    const name = args.find(a => a !== '-n' && a !== ns);
     if (!name) return { error: true, message: 'error: You must specify a pod name' };
 
     const pods = cluster.getResourcesByKind('Pod');
-    const pod = pods.find(p => p.metadata?.name === name);
+    const pod = pods.find(p => p.metadata?.name === name && (!ns || p.metadata?.namespace === ns));
     if (!pod) return { error: true, message: `Error from server (NotFound): pods "${name}" not found` };
     if (pod.status?.phase !== 'Running') return { error: true, message: `Error from server: container in pod "${name}" is not running` };
 
@@ -432,7 +434,7 @@ export class CommandBar {
 
     const gameEngine = window.game?.gameEngine;
     if (gameEngine) {
-      gameEngine.queueCommand({ type: 'delete', kind, name, namespace: res.metadata?.namespace || 'default' });
+      gameEngine.queueCommand({ type: 'delete', kind, name, namespace: res.metadata?.namespace ?? '' });
     } else {
       cluster.remove(res.uid);
     }
@@ -463,6 +465,7 @@ export class CommandBar {
       added.setCondition('Ready', 'True', 'KubeletReady');
     }
 
+    engine.emit('resource:created', { kind, name });
     engine.emit('resource:applied', { kind, name });
     engine.emit('xp:gain', { amount: 15 });
     return { error: false, message: `${kind.toLowerCase()}/${name} created` };
@@ -665,12 +668,14 @@ export class CommandBar {
   }
 
   _cmdExec(args, cluster) {
+    const nsIdx = args.indexOf('-n');
+    const ns = nsIdx >= 0 ? args[nsIdx + 1] : undefined;
     const itIdx = args.findIndex(a => a === '-it');
-    const name = itIdx >= 0 ? args[itIdx + 1] : args[0];
+    const name = itIdx >= 0 ? args[itIdx + 1] : args.find(a => a !== '-n' && a !== ns);
     if (!name) return { error: true, message: 'error: must specify pod name' };
 
     const pods = cluster.getResourcesByKind('Pod');
-    const pod = pods.find(p => p.metadata?.name === name);
+    const pod = pods.find(p => p.metadata?.name === name && (!ns || p.metadata?.namespace === ns));
     if (!pod) return { error: true, message: `Error from server (NotFound): pods "${name}" not found` };
 
     const cmdParts = args.slice(args.indexOf('--') + 1);

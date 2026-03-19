@@ -437,7 +437,7 @@ export class GameEngine {
       return { success: false, message: `${kind} "${name}" already exists in namespace "${namespace}"` };
     }
 
-    const resource = new ResourceBase(kind, this._apiVersionForKind(kind), name, namespace || 'default');
+    const resource = new ResourceBase(kind, this._apiVersionForKind(kind), name, namespace ?? 'default');
     if (spec) {
       resource.updateSpec(spec);
     }
@@ -455,7 +455,7 @@ export class GameEngine {
 
   _handleDelete(command) {
     const { kind, name, namespace } = command;
-    const resource = this.cluster.getByName(kind, name, namespace || 'default');
+    const resource = this.cluster.getByName(kind, name, namespace ?? 'default');
     if (!resource) {
       return { success: false, message: `${kind} "${name}" not found` };
     }
@@ -466,7 +466,7 @@ export class GameEngine {
 
   _handleScale(command) {
     const { kind, name, namespace, replicas } = command;
-    const resource = this.cluster.getByName(kind, name, namespace || 'default');
+    const resource = this.cluster.getByName(kind, name, namespace ?? 'default');
     if (!resource) {
       return { success: false, message: `${kind} "${name}" not found` };
     }
@@ -479,7 +479,7 @@ export class GameEngine {
 
   _handleApply(command) {
     const { kind, name, namespace, spec, labels } = command;
-    let resource = this.cluster.getByName(kind, name, namespace || 'default');
+    let resource = this.cluster.getByName(kind, name, namespace ?? 'default');
 
     if (resource) {
       if (spec) resource.updateSpec(spec);
@@ -538,7 +538,7 @@ export class GameEngine {
 
   _handleRollout(command) {
     const { subcommand, kind, name, namespace } = command;
-    const resource = this.cluster.getByName(kind || 'Deployment', name, namespace || 'default');
+    const resource = this.cluster.getByName(kind || 'Deployment', name, namespace ?? 'default');
     if (!resource) return { success: false, message: `${kind || 'Deployment'} "${name}" not found` };
 
     switch (subcommand) {
@@ -569,7 +569,7 @@ export class GameEngine {
 
   _handleExec(command) {
     const { podName, namespace, containerName, cmd } = command;
-    const pod = this.cluster.getByName('Pod', podName, namespace || 'default');
+    const pod = this.cluster.getByName('Pod', podName, namespace ?? 'default');
     if (!pod) return { success: false, message: `Pod "${podName}" not found` };
     if (pod.status.phase !== 'Running') return { success: false, message: `Pod "${podName}" is not running` };
 
@@ -579,7 +579,7 @@ export class GameEngine {
 
   _handleLogs(command) {
     const { podName, namespace, containerName } = command;
-    const pod = this.cluster.getByName('Pod', podName, namespace || 'default');
+    const pod = this.cluster.getByName('Pod', podName, namespace ?? 'default');
     if (!pod) return { success: false, message: `Pod "${podName}" not found` };
 
     const events = pod.getEvents(20);

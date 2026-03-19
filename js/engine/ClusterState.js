@@ -1,5 +1,11 @@
 import { ResourceBase } from '../resources/ResourceBase.js';
 
+const CLUSTER_SCOPED_KINDS = ['Node', 'Namespace', 'PersistentVolume', 'StorageClass', 'ClusterRole', 'ClusterRoleBinding'];
+
+export function isClusterScopedKind(kind) {
+  return CLUSTER_SCOPED_KINDS.includes(kind);
+}
+
 const RESOURCE_KINDS = [
   'Node', 'Namespace', 'Pod', 'Deployment', 'ReplicaSet', 'StatefulSet',
   'DaemonSet', 'Job', 'CronJob', 'Service', 'Ingress', 'NetworkPolicy',
@@ -720,9 +726,7 @@ export class ClusterState {
   }
 
   addResource(obj) {
-    const CLUSTER_SCOPED = ['Node', 'Namespace', 'PersistentVolume', 'StorageClass', 'ClusterRole', 'ClusterRoleBinding'];
-    const isClusterScoped = CLUSTER_SCOPED.includes(obj.kind);
-    const ns = isClusterScoped ? '' : (obj.metadata?.namespace || 'default');
+    const ns = isClusterScopedKind(obj.kind) ? '' : (obj.metadata?.namespace || 'default');
 
     const resource = new ResourceBase(obj.kind, {
       name: obj.name || obj.metadata?.name || 'unnamed',

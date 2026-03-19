@@ -189,7 +189,7 @@ export class ContextMenu {
     const uid = this.resource.metadata?.uid;
     const kind = this.resource.kind;
     const name = this.resource.metadata?.name;
-    const namespace = this.resource.metadata?.namespace || 'default';
+    const namespace = this.resource.metadata?.namespace;
 
     switch (event) {
       case 'resource:delete':
@@ -225,10 +225,10 @@ export class ContextMenu {
         if (gameEngine) gameEngine.queueCommand({ type: 'drain', name });
         break;
       case 'pod:logs':
-        engine.emit('ui:run-command', { command: `logs ${name}` });
+        engine.emit('ui:run-command', { command: namespace ? `logs ${name} -n ${namespace}` : `logs ${name}` });
         break;
       case 'pod:exec':
-        engine.emit('ui:run-command', { command: `exec -it ${name} -- /bin/sh` });
+        engine.emit('ui:run-command', { command: namespace ? `exec -it ${name} -n ${namespace} -- /bin/sh` : `exec -it ${name} -- /bin/sh` });
         break;
       default:
         engine.emit(event, { uid, kind, name, namespace });

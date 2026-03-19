@@ -424,6 +424,7 @@
 
   <script type="module">
     import { GameEngine, GAME_MODES, GAME_STATES } from './js/engine/GameEngine.js';
+    import { isClusterScopedKind } from './js/engine/ClusterState.js';
     import { ClusterRenderer } from './js/rendering/ClusterRenderer.js';
     import { IncidentEngine } from './js/engine/IncidentEngine.js';
     import { ScoringEngine } from './js/engine/ScoringEngine.js';
@@ -929,8 +930,7 @@
         if (!ResourceClass) return;
 
         this._showNamePrompt(kind, (chosenName) => {
-          const CLUSTER_SCOPED = ['Node', 'Namespace', 'PersistentVolume', 'StorageClass', 'ClusterRole', 'ClusterRoleBinding'];
-          const ns = CLUSTER_SCOPED.includes(kind) ? '' : 'default';
+          const ns = isClusterScopedKind(kind) ? '' : 'default';
           const resource = new ResourceClass({ name: chosenName, namespace: ns });
 
           if (kind === 'Node') {
