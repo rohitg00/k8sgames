@@ -42,6 +42,8 @@ export class Pod extends ResourceBase {
     this.startupTime = 1 + Math.random() * 3;
     this.ip = null;
     this.qosClass = this._calculateQoS();
+    this.status.conditions = this.conditions;
+    this.status.containerStatuses = this.containerStatuses;
     this.setStatus('Pending');
   }
 
@@ -130,6 +132,10 @@ export class Pod extends ResourceBase {
         });
       }
     }
+
+    this.status.phase = this.phase;
+    this.status.conditions = this.conditions;
+    this.status.containerStatuses = this.containerStatuses;
   }
 
   _triggerOOMKill() {
@@ -287,6 +293,7 @@ export class Deployment extends ResourceBase {
       { type: 'Available', status: 'True', reason: 'MinimumReplicasAvailable', lastTransitionTime: new Date().toISOString() },
       { type: 'Progressing', status: 'True', reason: 'NewReplicaSetAvailable', lastTransitionTime: new Date().toISOString() }
     ];
+    this.status.conditions = this.conditions;
     this.setStatus('Available');
   }
 
@@ -357,6 +364,8 @@ export class Deployment extends ResourceBase {
       this.readyReplicas += rs.readyReplicas || 0;
       this.availableReplicas += rs.availableReplicas || 0;
     }
+
+    this.status.conditions = this.conditions;
   }
 
   getShape() { return 'rounded-rect'; }

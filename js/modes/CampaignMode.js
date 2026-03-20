@@ -238,15 +238,20 @@ class CampaignMode {
           const nodes = state.getResourcesByKind('Node') || [];
           const daemonSets = state.getResourcesByKind('DaemonSet') || [];
           if (daemonSets.length > 0 && nodes.length > 0) {
-            obj.current = nodes.length;
+            const pods = state.getResourcesByKind('Pod') || [];
+            const dsPods = pods.filter((p) =>
+              p.metadata?.ownerReferences?.some((ref) => ref.kind === 'DaemonSet')
+            );
+            const coveredNodes = new Set(dsPods.map((p) => p.spec?.nodeName).filter(Boolean));
+            obj.current = coveredNodes.size;
             obj.target = nodes.length;
-            obj.completed = true;
+            obj.completed = coveredNodes.size >= nodes.length;
           }
           break;
         }
         case 'complete': {
           const jobs = state.getResourcesByKind(obj.kind) || [];
-          const completed = jobs.filter((j) => j.status?.phase === 'Completed');
+          const completed = jobs.filter((j) => j.status?.phase === 'Complete');
           obj.current = completed.length;
           obj.completed = obj.current >= obj.target;
           break;
@@ -266,7 +271,8 @@ class CampaignMode {
         case 'connect': {
           const services = state.getResourcesByKind('Service') || [];
           const hasConnection = services.some((s) =>
-            s.spec?.selector && (s.name === obj.to + '-svc' || s.name === obj.to)
+            s.spec?.selector && Object.keys(s.spec.selector).length > 0 &&
+            (s.name === obj.to + '-svc' || s.name === obj.to)
           );
           obj.current = hasConnection ? 1 : 0;
           obj.completed = hasConnection;

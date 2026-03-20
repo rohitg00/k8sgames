@@ -658,6 +658,7 @@ class ScoringEngine {
           });
         }
       } catch (e) {
+        console.warn('Achievement check error:', e);
       }
     }
 
