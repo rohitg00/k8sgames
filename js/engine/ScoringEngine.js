@@ -113,10 +113,16 @@ class ScoringEngine {
         this.progress.stats.playedLateNight = true;
         this.checkAchievements();
         this.saveProgress();
+        if (this._nightOwlInterval) {
+          clearInterval(this._nightOwlInterval);
+          this._nightOwlInterval = null;
+        }
       }
     };
     checkNightOwl();
-    this._nightOwlInterval = setInterval(checkNightOwl, 60000);
+    if (!this._nightOwlInterval && !this.progress.stats.playedLateNight) {
+      this._nightOwlInterval = setInterval(checkNightOwl, 60000);
+    }
   }
 
   trackResourceCreated(data) {

@@ -207,7 +207,7 @@ const CAMPAIGN_LEVELS = [
     startingResources: [
       { kind: 'Node', name: 'node-1', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
       { kind: 'Node', name: 'node-2', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
-      { kind: 'Deployment', name: 'api-server', spec: { replicas: 4, image: 'api:v1', strategy: 'RollingUpdate' } }
+      { kind: 'Deployment', name: 'api-server', spec: { replicas: 4, strategy: { type: 'RollingUpdate' }, template: { spec: { containers: [{ name: 'main', image: 'api:v1' }] } } } }
     ],
     availableResources: ['Pod', 'Deployment', 'ReplicaSet'],
     incidents: [
@@ -235,8 +235,8 @@ const CAMPAIGN_LEVELS = [
     startingResources: [
       { kind: 'Node', name: 'node-1', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
       { kind: 'Node', name: 'node-2', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
-      { kind: 'Deployment', name: 'frontend', spec: { replicas: 2, image: 'nginx:latest' } },
-      { kind: 'Deployment', name: 'backend', spec: { replicas: 2, image: 'node:18' } }
+      { kind: 'Deployment', name: 'frontend', spec: { replicas: 2, template: { spec: { containers: [{ name: 'main', image: 'nginx:latest' }] } } } },
+      { kind: 'Deployment', name: 'backend', spec: { replicas: 2, template: { spec: { containers: [{ name: 'main', image: 'node:18' }] } } } }
     ],
     availableResources: ['Pod', 'Deployment', 'Service'],
     incidents: [],
@@ -262,9 +262,9 @@ const CAMPAIGN_LEVELS = [
     startingResources: [
       { kind: 'Node', name: 'node-1', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
       { kind: 'Node', name: 'node-2', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
-      { kind: 'Deployment', name: 'web', spec: { replicas: 2, image: 'nginx:latest' } },
+      { kind: 'Deployment', name: 'web', spec: { replicas: 2, template: { spec: { containers: [{ name: 'main', image: 'nginx:latest' }] } } } },
       { kind: 'Service', name: 'web-svc', spec: { type: 'ClusterIP', port: 80, targetPort: 80 } },
-      { kind: 'Deployment', name: 'api', spec: { replicas: 2, image: 'node:18' } },
+      { kind: 'Deployment', name: 'api', spec: { replicas: 2, template: { spec: { containers: [{ name: 'main', image: 'node:18' }] } } } },
       { kind: 'Service', name: 'api-svc', spec: { type: 'ClusterIP', port: 3000, targetPort: 3000 } }
     ],
     availableResources: ['Service', 'Ingress', 'Secret'],
@@ -356,7 +356,7 @@ const CAMPAIGN_LEVELS = [
     startingResources: [
       { kind: 'Node', name: 'node-1', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
       { kind: 'Node', name: 'node-2', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
-      { kind: 'Deployment', name: 'app', spec: { replicas: 2, image: 'app:v1' } }
+      { kind: 'Deployment', name: 'app', spec: { replicas: 2, template: { spec: { containers: [{ name: 'main', image: 'app:v1' }] } } } }
     ],
     availableResources: ['ConfigMap', 'Secret', 'Pod', 'Deployment'],
     incidents: [],
@@ -472,8 +472,8 @@ const CAMPAIGN_LEVELS = [
       { kind: 'Node', name: 'node-1', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
       { kind: 'Node', name: 'node-2', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
       { kind: 'Node', name: 'node-3', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
-      { kind: 'Deployment', name: 'web', spec: { replicas: 3, image: 'web:v2' } },
-      { kind: 'Deployment', name: 'api', spec: { replicas: 2, image: 'api:v3' } },
+      { kind: 'Deployment', name: 'web', spec: { replicas: 3, template: { spec: { containers: [{ name: 'main', image: 'web:v2' }] } } } },
+      { kind: 'Deployment', name: 'api', spec: { replicas: 2, template: { spec: { containers: [{ name: 'main', image: 'api:v3' }] } } } },
       { kind: 'Service', name: 'web-svc', spec: { port: 80 } },
       { kind: 'Service', name: 'api-svc', spec: { port: 3000 } }
     ],
