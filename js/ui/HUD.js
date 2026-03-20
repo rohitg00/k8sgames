@@ -36,6 +36,11 @@ export class HUD {
     return `
       <div class="flex items-center justify-between px-4 py-2 backdrop-blur-xl bg-white/5 border-b border-white/10 pointer-events-auto">
         <div class="flex items-center gap-4">
+          <button id="hud-menu" class="px-2 py-1 text-xs text-white/60 hover:text-white/90 hover:bg-white/10 rounded-lg transition-all flex items-center gap-1.5" title="Back to Menu (Esc)">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            <span>Menu</span>
+          </button>
+          <div class="hud-divider h-5 w-px bg-white/10"></div>
           <div class="flex items-center gap-2">
             <div id="hud-health" class="w-3 h-3 rounded-full bg-green-400 shadow-lg shadow-green-400/50 transition-colors duration-500"></div>
             <span class="text-white/90 text-sm font-semibold tracking-wide">K8s Games</span>
@@ -120,6 +125,10 @@ export class HUD {
             <span id="hud-alert-badge" class="absolute -top-1 -right-1 hidden min-w-[16px] h-4 px-1 text-[10px] font-bold text-white bg-red-500 rounded-full flex items-center justify-center">0</span>
           </button>
 
+          <button id="hud-settings" class="px-2 py-0.5 text-xs text-white/60 hover:text-white/90 transition-colors" title="Settings">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+
           <div class="hud-divider h-5 w-px bg-white/10"></div>
 
           <a href="https://github.com/rohitg00/k8sgames" target="_blank" rel="noopener" class="hud-github flex items-center gap-1.5 px-2 py-0.5 text-xs text-white/50 hover:text-white/90 transition-all rounded-md hover:bg-white/5" title="Star on GitHub">
@@ -136,11 +145,12 @@ export class HUD {
 
   _cacheElements() {
     const ids = [
-      'hud-health', 'hud-nodes', 'hud-pods-running', 'hud-pods-pending',
-      'hud-pods-failed', 'hud-deployments', 'hud-services', 'hud-cpu-bar',
-      'hud-cpu-text', 'hud-mem-bar', 'hud-mem-text', 'hud-timer', 'hud-mode',
-      'hud-level', 'hud-xp-bar', 'hud-pause', 'hud-pause-icon', 'hud-speed-1',
-      'hud-speed-2', 'hud-speed-4', 'hud-alert-badge', 'hud-alerts', 'hud-xp-container'
+      'hud-menu', 'hud-settings', 'hud-health', 'hud-nodes', 'hud-pods-running',
+      'hud-pods-pending', 'hud-pods-failed', 'hud-deployments', 'hud-services',
+      'hud-cpu-bar', 'hud-cpu-text', 'hud-mem-bar', 'hud-mem-text', 'hud-timer',
+      'hud-mode', 'hud-level', 'hud-xp-bar', 'hud-pause', 'hud-pause-icon',
+      'hud-speed-1', 'hud-speed-2', 'hud-speed-4', 'hud-alert-badge', 'hud-alerts',
+      'hud-xp-container'
     ];
     for (const id of ids) {
       this.elements[id] = document.getElementById(id);
@@ -148,6 +158,12 @@ export class HUD {
   }
 
   _bindEvents() {
+    this.elements['hud-menu'].addEventListener('click', () => {
+      window.game?.app?.returnToMenu();
+    });
+    this.elements['hud-settings'].addEventListener('click', () => {
+      document.getElementById('settings-panel')?.classList.add('active');
+    });
     this.elements['hud-pause'].addEventListener('click', () => this._togglePause());
     this.elements['hud-speed-1'].addEventListener('click', () => this._setSpeed(1));
     this.elements['hud-speed-2'].addEventListener('click', () => this._setSpeed(2));

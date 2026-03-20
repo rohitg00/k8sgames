@@ -4,6 +4,8 @@ Learn Kubernetes by playing. Deploy pods, fix CrashLoopBackOff, type real kubect
 
 **[Play Now at k8sgames.com](https://k8sgames.com)**
 
+![K8s Games — 3D Kubernetes cluster simulation in the browser](screenshot.png)
+
 ## Get Started
 
 Visit **[k8sgames.com](https://k8sgames.com)** and pick a mode. No install, no signup, no build step.
