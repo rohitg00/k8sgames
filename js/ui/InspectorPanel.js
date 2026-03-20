@@ -106,10 +106,18 @@ export class InspectorPanel {
     const status = r.status?.phase || r.status?.state || 'Active';
 
     const iconMap = { Pod: 'P', Deployment: 'D', Service: 'S', Node: 'N', ConfigMap: 'C', Secret: 'K', Ingress: 'I', StatefulSet: 'SS', DaemonSet: 'DS' };
-    const colorMap = { Pod: 'sky', Deployment: 'blue', Service: 'purple', Node: 'green', ConfigMap: 'amber', Secret: 'red', Ingress: 'orange' };
-    const color = colorMap[kind] || 'sky';
+    const colorMap = {
+      Pod: ['bg-sky-500/20', 'text-sky-400'],
+      Deployment: ['bg-blue-500/20', 'text-blue-400'],
+      Service: ['bg-purple-500/20', 'text-purple-400'],
+      Node: ['bg-green-500/20', 'text-green-400'],
+      ConfigMap: ['bg-amber-500/20', 'text-amber-400'],
+      Secret: ['bg-red-500/20', 'text-red-400'],
+      Ingress: ['bg-orange-500/20', 'text-orange-400'],
+    };
+    const [bgColor, textColor] = colorMap[kind] || ['bg-sky-500/20', 'text-sky-400'];
 
-    document.getElementById('inspector-icon').className = `w-8 h-8 rounded-lg bg-${color}-500/20 flex items-center justify-center text-${color}-400 text-sm font-bold shrink-0`;
+    document.getElementById('inspector-icon').className = `w-8 h-8 rounded-lg ${bgColor} flex items-center justify-center ${textColor} text-sm font-bold shrink-0`;
     document.getElementById('inspector-icon').textContent = iconMap[kind] || kind[0];
     document.getElementById('inspector-name').textContent = name;
     document.getElementById('inspector-subtitle').textContent = `${kind} / ${ns} / ${status}`;

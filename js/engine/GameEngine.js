@@ -401,7 +401,7 @@ export class GameEngine {
       this._commandHistory.shift();
     }
 
-    this.eventBus.emit('command:execute', command);
+    this.eventBus.emit('command:executed', command);
 
     switch (command.type) {
       case 'create':
