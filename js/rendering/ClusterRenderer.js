@@ -201,7 +201,28 @@ export class ClusterRenderer {
         this._onMouseDown = this._handleMouseDown.bind(this);
         this._onMouseUp = this._handleMouseUp.bind(this);
         this._onResize = this._handleResize.bind(this);
-        this._onContextMenu = (e) => e.preventDefault();
+        this._onContextMenu = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const rect = this.canvas.getBoundingClientRect();
+            this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            this.raycaster.setFromCamera(this.mouse, this.camera);
+            const intersects = this.raycaster.intersectObjects(this.pickableObjects, true);
+            if (intersects.length > 0) {
+                let target = intersects[0].object;
+                while (target.parent && !target.userData.resourceId) {
+                    target = target.parent;
+                }
+                if (target.userData.resourceId && window.game?.engine) {
+                    window.game.engine.emit('resource:contextmenu', {
+                        uid: target.userData.resourceId,
+                        x: e.clientX,
+                        y: e.clientY,
+                    });
+                }
+            }
+        };
 
         this.canvas.addEventListener('mousemove', this._onMouseMove);
         this.canvas.addEventListener('mousedown', this._onMouseDown);
