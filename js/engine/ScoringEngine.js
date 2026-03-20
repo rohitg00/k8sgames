@@ -88,6 +88,35 @@ class ScoringEngine {
       this.progress.stats.yamlViewed = (this.progress.stats.yamlViewed || 0) + 1;
       this.checkAchievements();
     });
+
+    this.gameEngine.on('incident:cascading-resolved', () => {
+      this.progress.stats.cascadingFailuresResolved = (this.progress.stats.cascadingFailuresResolved || 0) + 1;
+      this.checkAchievements();
+      this.saveProgress();
+    });
+
+    this.gameEngine.on('secret:exposed-fixed', () => {
+      this.progress.stats.foundExposedSecret = true;
+      this.checkAchievements();
+      this.saveProgress();
+    });
+
+    this.gameEngine.on('rollout:zero-downtime', () => {
+      this.progress.stats.zeroDowntimeUpdates = (this.progress.stats.zeroDowntimeUpdates || 0) + 1;
+      this.checkAchievements();
+      this.saveProgress();
+    });
+
+    const checkNightOwl = () => {
+      const hour = new Date().getHours();
+      if (hour >= 0 && hour < 4) {
+        this.progress.stats.playedLateNight = true;
+        this.checkAchievements();
+        this.saveProgress();
+      }
+    };
+    checkNightOwl();
+    this._nightOwlInterval = setInterval(checkNightOwl, 60000);
   }
 
   trackResourceCreated(data) {
@@ -747,6 +776,7 @@ class ScoringEngine {
 
   destroy() {
     this.saveProgress();
+    if (this._nightOwlInterval) clearInterval(this._nightOwlInterval);
     this.gameEngine = null;
   }
 }

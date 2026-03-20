@@ -10,7 +10,9 @@ const RESOURCE_KINDS = [
   'Node', 'Namespace', 'Pod', 'Deployment', 'ReplicaSet', 'StatefulSet',
   'DaemonSet', 'Job', 'CronJob', 'Service', 'Ingress', 'NetworkPolicy',
   'ConfigMap', 'Secret', 'PersistentVolume', 'PersistentVolumeClaim',
-  'StorageClass', 'HorizontalPodAutoscaler',
+  'StorageClass', 'HorizontalPodAutoscaler', 'Role', 'ClusterRole',
+  'RoleBinding', 'ClusterRoleBinding', 'ServiceAccount', 'PodDisruptionBudget',
+  'ResourceQuota',
 ];
 
 const OWNER_CHAINS = {

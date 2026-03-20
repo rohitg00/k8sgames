@@ -248,7 +248,7 @@ const ACHIEVEMENTS = [
     description: 'Deploy every type of Kubernetes resource at least once.',
     icon: 'collection',
     category: 'Advanced',
-    condition: (stats) => stats.uniqueResourceTypesDeployed >= 15,
+    condition: (stats) => stats.uniqueResourceTypesDeployed >= 10,
     xpReward: 300
   },
   {

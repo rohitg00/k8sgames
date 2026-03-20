@@ -596,6 +596,9 @@ export class GameEngine {
       Ingress: 'networking.k8s.io/v1', NetworkPolicy: 'networking.k8s.io/v1',
       StorageClass: 'storage.k8s.io/v1',
       HorizontalPodAutoscaler: 'autoscaling/v2',
+      Role: 'rbac.authorization.k8s.io/v1', ClusterRole: 'rbac.authorization.k8s.io/v1',
+      RoleBinding: 'rbac.authorization.k8s.io/v1', ClusterRoleBinding: 'rbac.authorization.k8s.io/v1',
+      ServiceAccount: 'v1', PodDisruptionBudget: 'policy/v1', ResourceQuota: 'v1',
     };
     return apiVersions[kind] || 'v1';
   }

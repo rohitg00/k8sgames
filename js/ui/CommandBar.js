@@ -465,7 +465,11 @@ export class CommandBar {
       added.setCondition('Ready', 'True', 'KubeletReady');
     }
 
-    engine.emit('resource:created', { kind, name });
+    engine.emit('resource:created', {
+      kind, name, mode: 'palette',
+      concurrentPods: kind === 'Pod' ? (cluster.getResourcesByKind('Pod') || []).length : undefined,
+      nodeCount: kind === 'Node' ? (cluster.getResourcesByKind('Node') || []).length : undefined,
+    });
     engine.emit('resource:applied', { kind, name });
     engine.emit('xp:gain', { amount: 15 });
     return { error: false, message: `${kind.toLowerCase()}/${name} created` };
@@ -493,6 +497,12 @@ export class CommandBar {
       DaemonSet: { spec: {}, status: {} },
       StatefulSet: { spec: { replicas: 1 }, status: {} },
       NetworkPolicy: { spec: { podSelector: {}, policyTypes: ['Ingress'] }, status: {} },
+      Role: { spec: { rules: [] }, status: {} },
+      ClusterRole: { spec: { rules: [] }, status: {} },
+      RoleBinding: { spec: { roleRef: { apiGroup: 'rbac.authorization.k8s.io', kind: 'Role', name: '' }, subjects: [] }, status: {} },
+      ClusterRoleBinding: { spec: { roleRef: { apiGroup: 'rbac.authorization.k8s.io', kind: 'ClusterRole', name: '' }, subjects: [] }, status: {} },
+      ServiceAccount: { spec: {}, status: {} },
+      PodDisruptionBudget: { spec: { selector: { matchLabels: {} }, maxUnavailable: 1 }, status: {} },
     };
 
     const def = defaults[kind] || { spec: {}, status: {} };
@@ -508,7 +518,11 @@ export class CommandBar {
       added.setCondition('Ready', 'True', 'KubeletReady');
     }
 
-    engine.emit('resource:created', { kind, name });
+    engine.emit('resource:created', {
+      kind, name, mode: 'command',
+      concurrentPods: kind === 'Pod' ? (cluster.getResourcesByKind('Pod') || []).length : undefined,
+      nodeCount: kind === 'Node' ? (cluster.getResourcesByKind('Node') || []).length : undefined,
+    });
     engine.emit('xp:gain', { amount: 15 });
     return { error: false, message: `${kind.toLowerCase()}/${name} created` };
   }
@@ -529,7 +543,10 @@ export class CommandBar {
       status: { phase: 'Pending' }
     });
 
-    engine.emit('resource:created', { uid, kind: 'Pod', name });
+    engine.emit('resource:created', {
+      kind: 'Pod', name, mode: 'command',
+      concurrentPods: (cluster.getResourcesByKind('Pod') || []).length,
+    });
     engine.emit('xp:gain', { amount: 10 });
     return { error: false, message: `pod/${name} created` };
   }

@@ -15,9 +15,9 @@ const CAMPAIGN_LEVELS = [
     availableResources: ['Pod', 'Namespace'],
     incidents: [],
     hints: [
-      'Click the + button or use the command bar to deploy resources',
-      'Namespaces help organize your cluster resources',
-      'Pods are the smallest deployable unit in Kubernetes'
+      'Type "kubectl run my-pod --image=nginx" in the command bar at the bottom',
+      'Type "kubectl create namespace my-ns" to create a namespace',
+      'You can also click the + button in the toolbar to create resources from a menu'
     ],
     starCriteria: { time: 120, efficiency: 0.8, noFailures: true },
     nextLevel: 2,
@@ -46,8 +46,9 @@ const CAMPAIGN_LEVELS = [
     availableResources: ['Pod', 'Deployment', 'Namespace'],
     incidents: [],
     hints: [
-      'Deployments manage ReplicaSets which manage Pods',
-      'Use the scale command to change replica count'
+      'Type "kubectl create deployment my-deploy" to create a Deployment',
+      'Type "kubectl scale deployment my-deploy --replicas=3" to scale up',
+      'Deployments auto-create ReplicaSets which manage Pods for you'
     ],
     starCriteria: { time: 180, efficiency: 0.7, noFailures: true },
     nextLevel: 3,
@@ -75,8 +76,9 @@ const CAMPAIGN_LEVELS = [
     availableResources: ['Pod', 'Deployment', 'Node', 'Namespace'],
     incidents: [],
     hints: [
-      'Add nodes to increase cluster capacity',
-      'The scheduler automatically distributes Pods across nodes'
+      'Click + and select Node, or type "kubectl create node" to add nodes',
+      'Create Pods or Deployments — the scheduler distributes them across nodes',
+      'Check the cluster view to verify Pods are placed on different nodes'
     ],
     starCriteria: { time: 240, efficiency: 0.7, noFailures: true },
     nextLevel: 4,
@@ -95,16 +97,16 @@ const CAMPAIGN_LEVELS = [
     startingResources: [
       { kind: 'Node', name: 'node-1', spec: { cpu: '4', memory: '8Gi', status: 'Ready' } },
       { kind: 'Node', name: 'node-2', spec: { cpu: '4', memory: '8Gi', status: 'Ready' } },
-      { kind: 'Deployment', name: 'web-app', spec: { replicas: 3, image: 'nginx:latest' } }
+      { kind: 'Deployment', name: 'web-app', spec: { replicas: 3, template: { spec: { containers: [{ name: 'main', image: 'nginx:latest' }] } } } }
     ],
     availableResources: ['Pod', 'Deployment', 'Node'],
     incidents: [
       { type: 'CrashLoopBackOff', triggerTime: 10, target: 'web-app', severity: 2 }
     ],
     hints: [
-      'Click on the red-glowing Pod to investigate',
-      'Check the logs to find the root cause',
-      'Apply the fix action from the investigation panel'
+      'Click on the red-glowing Pod to see its status in the Inspector panel',
+      'Right-click the crashing Pod and select "Investigate" to start resolution',
+      'Once investigated, apply the suggested fix from the incident panel'
     ],
     starCriteria: { time: 180, efficiency: 0.8, noFailures: false },
     nextLevel: 5
@@ -131,8 +133,9 @@ const CAMPAIGN_LEVELS = [
       { type: 'PodEviction', triggerTime: 60, target: 'random', severity: 2 }
     ],
     hints: [
-      'Deployments with multiple replicas survive Pod failures',
-      'Kubernetes automatically reschedules evicted Pods'
+      'Create 3 Deployments, then scale each to at least 2 replicas with "kubectl scale"',
+      'When a Pod eviction incident appears, right-click and investigate to resolve it',
+      'With replicas > 1, Kubernetes automatically reschedules evicted Pods'
     ],
     starCriteria: { time: 300, efficiency: 0.75, noFailures: false },
     nextLevel: 6
@@ -155,8 +158,9 @@ const CAMPAIGN_LEVELS = [
     availableResources: ['Pod', 'Deployment', 'DaemonSet', 'Node'],
     incidents: [],
     hints: [
-      'DaemonSets ensure one Pod per node',
-      'Adding a new node automatically gets a DaemonSet Pod'
+      'Create a DaemonSet using the + menu — it deploys one Pod per node automatically',
+      'Add 2 more nodes (total 4) with "kubectl create node" to complete the node objective',
+      'Verify the DaemonSet has Pods on all nodes by clicking it in the Inspector'
     ],
     starCriteria: { time: 240, efficiency: 0.8, noFailures: true },
     nextLevel: 7
@@ -182,8 +186,9 @@ const CAMPAIGN_LEVELS = [
       { type: 'JobDeadlineExceeded', triggerTime: 45, target: 'batch-job', severity: 1 }
     ],
     hints: [
-      'Jobs run tasks to completion, unlike Deployments',
-      'CronJobs schedule Jobs on a time-based schedule'
+      'Create 2 Jobs with "kubectl create job" — they run to completion then stop',
+      'Create a CronJob with the + menu — it schedules Jobs on a timer',
+      'Wait for Jobs to reach "Complete" phase — check status in the Inspector'
     ],
     starCriteria: { time: 300, efficiency: 0.7, noFailures: false },
     nextLevel: 8
@@ -209,8 +214,9 @@ const CAMPAIGN_LEVELS = [
       { type: 'ImagePullBackOff', triggerTime: 20, target: 'api-server', severity: 3 }
     ],
     hints: [
-      'Rolling updates gradually replace old Pods with new ones',
-      'Use rollback when a new version has issues'
+      'Right-click the Deployment and select "Rolling Update" to change the image',
+      'When ImagePullBackOff incident appears, right-click the Deployment and "Rollback"',
+      'Keep the cluster healthy at 90%+ by resolving incidents quickly'
     ],
     starCriteria: { time: 240, efficiency: 0.8, noFailures: false },
     nextLevel: 9
@@ -235,8 +241,9 @@ const CAMPAIGN_LEVELS = [
     availableResources: ['Pod', 'Deployment', 'Service'],
     incidents: [],
     hints: [
-      'Services provide stable DNS names for Pods',
-      'ClusterIP is internal, NodePort exposes externally'
+      'Create a Service named "backend" or "backend-svc" with a selector matching the backend Pods',
+      'For the NodePort objective, create a Service and set spec.type to "NodePort"',
+      'Services use selectors (label matching) to route traffic to the right Pods'
     ],
     starCriteria: { time: 300, efficiency: 0.75, noFailures: true },
     nextLevel: 10
@@ -263,8 +270,9 @@ const CAMPAIGN_LEVELS = [
     availableResources: ['Service', 'Ingress', 'Secret'],
     incidents: [],
     hints: [
-      'Ingress routes external HTTP traffic to internal Services',
-      'Create a TLS Secret for HTTPS support'
+      'Create an Ingress with rules routing /api to api-svc and /web to web-svc',
+      'Add a TLS section to the Ingress spec — first create a Secret of type "kubernetes.io/tls"',
+      'Ingress needs existing Services to route to — they are pre-created for you'
     ],
     starCriteria: { time: 360, efficiency: 0.7, noFailures: true },
     nextLevel: 11
@@ -295,8 +303,9 @@ const CAMPAIGN_LEVELS = [
       { type: 'UnauthorizedAccess', triggerTime: 30, target: 'database', severity: 4 }
     ],
     hints: [
-      'Default deny policies block all traffic, then allow specific routes',
-      'Use namespace selectors in NetworkPolicy rules'
+      'Create a NetworkPolicy in the "database" namespace with an empty podSelector to deny all traffic',
+      'Create a second NetworkPolicy allowing ingress from namespace "backend" to "database"',
+      'NetworkPolicies use namespace selectors and pod selectors to control traffic flow'
     ],
     starCriteria: { time: 360, efficiency: 0.7, noFailures: false },
     nextLevel: 12
@@ -326,9 +335,9 @@ const CAMPAIGN_LEVELS = [
       { type: 'DNSResolutionFailure', triggerTime: 5, target: 'kube-dns', severity: 4 }
     ],
     hints: [
-      'DNS runs as a Service in kube-system namespace',
-      'NetworkPolicies might be blocking DNS traffic on port 53',
-      'Check CoreDNS Pod logs for errors'
+      'The DNS incident needs to be investigated — right-click and resolve it',
+      'The "deny-all" NetworkPolicy is blocking DNS traffic. Create a policy allowing UDP port 53',
+      'DNS runs as the kube-dns Service in kube-system — make sure NetworkPolicies allow it'
     ],
     starCriteria: { time: 300, efficiency: 0.7, noFailures: false },
     nextLevel: 13
@@ -352,8 +361,9 @@ const CAMPAIGN_LEVELS = [
     availableResources: ['ConfigMap', 'Secret', 'Pod', 'Deployment'],
     incidents: [],
     hints: [
-      'ConfigMaps store non-sensitive configuration data',
-      'Mount as volume or inject as environment variables'
+      'Create ConfigMaps with "kubectl create configmap" — add key-value data in the spec',
+      'The "mount" objective requires a ConfigMap referenced in a Pod volume mount',
+      'The "envFrom" objective requires a ConfigMap used as environment variables in a Pod'
     ],
     starCriteria: { time: 240, efficiency: 0.8, noFailures: true },
     nextLevel: 14
@@ -381,9 +391,9 @@ const CAMPAIGN_LEVELS = [
       { type: 'SecretExposed', triggerTime: 15, target: 'db-config', severity: 4 }
     ],
     hints: [
-      'Secrets are base64 encoded (not encrypted!) — use encryption at rest for true security',
-      'Move sensitive data from ConfigMaps to Secrets',
-      'The password in db-config ConfigMap is a security issue'
+      'The db-config ConfigMap has DB_PASSWORD exposed — delete or edit it to remove the password',
+      'Create a Secret to store the password instead: "kubectl create secret db-secret"',
+      'Mount the Secret to the database Deployment and create a second Secret for the API'
     ],
     starCriteria: { time: 300, efficiency: 0.75, noFailures: false },
     nextLevel: 15
@@ -407,8 +417,9 @@ const CAMPAIGN_LEVELS = [
     availableResources: ['PersistentVolume', 'PersistentVolumeClaim', 'StorageClass', 'StatefulSet'],
     incidents: [],
     hints: [
-      'PVs are cluster resources, PVCs are namespace-scoped requests',
-      'PVC storage size must be <= PV capacity'
+      'Create 2 PersistentVolumes (cluster-scoped) with "kubectl create pv"',
+      'Create 2 PersistentVolumeClaims — they auto-bind to available PVs matching the storage class',
+      'PVC storage request must be <= the PV capacity for binding to succeed'
     ],
     starCriteria: { time: 300, efficiency: 0.75, noFailures: true },
     nextLevel: 16
@@ -438,9 +449,9 @@ const CAMPAIGN_LEVELS = [
       { type: 'PodStuckTerminating', triggerTime: 60, target: 'statefulset-pod', severity: 2 }
     ],
     hints: [
-      'StatefulSets provide stable, unique network identifiers',
-      'Headless Services (clusterIP: None) enable direct Pod DNS',
-      'StatefulSet Pods are created in order: pod-0, pod-1, pod-2'
+      'Create a StatefulSet from the + menu, then scale it to 3 with "kubectl scale statefulset"',
+      'Create a headless Service with spec.clusterIP set to "None" for direct Pod DNS',
+      'StatefulSet Pods deploy in order (pod-0, pod-1, pod-2) — each gets a stable hostname'
     ],
     starCriteria: { time: 360, efficiency: 0.7, noFailures: false },
     nextLevel: 17
@@ -472,10 +483,10 @@ const CAMPAIGN_LEVELS = [
       { type: 'ReadinessProbeFailure', triggerTime: 45, target: 'web', severity: 2 }
     ],
     hints: [
-      'Resource requests guarantee minimum CPU/memory',
-      'Resource limits cap maximum usage',
-      'Liveness probes restart unhealthy containers',
-      'Readiness probes remove Pods from Service endpoints'
+      'Edit Deployments to add spec.resources.requests and spec.resources.limits',
+      'Add spec.livenessProbe and spec.readinessProbe to Deployment containers',
+      'Create an HPA targeting a Deployment with "kubectl create hpa"',
+      'When OOMKilled incident appears, right-click to investigate and increase memory limits'
     ],
     starCriteria: { time: 420, efficiency: 0.7, noFailures: false },
     nextLevel: 18
@@ -505,9 +516,9 @@ const CAMPAIGN_LEVELS = [
       { type: 'UnauthorizedAccess', triggerTime: 25, target: 'admin-sa', severity: 5 }
     ],
     hints: [
-      'Principle of least privilege: grant only needed permissions',
-      'Roles are namespace-scoped, ClusterRoles are cluster-wide',
-      'RoleBindings connect Roles to ServiceAccounts'
+      'Create Roles with specific verbs (get, list, watch) — avoid using "*" wildcard',
+      'Create RoleBindings to connect Roles to ServiceAccounts in each namespace',
+      'Create ServiceAccounts for each namespace — the "admin" SA has wildcard permissions to fix'
     ],
     starCriteria: { time: 420, efficiency: 0.7, noFailures: false },
     nextLevel: 19
@@ -542,9 +553,9 @@ const CAMPAIGN_LEVELS = [
       { type: 'PodEviction', triggerTime: 20, target: 'multiple', severity: 3 }
     ],
     hints: [
-      'Cordon unhealthy nodes to prevent new scheduling',
-      'Drain nodes before performing maintenance',
-      'PodDisruptionBudgets prevent too many Pods going down at once'
+      'When nodes fail, right-click incidents to investigate and resolve them',
+      'Type "kubectl cordon node-name" then "kubectl drain node-name" for node maintenance',
+      'Create a PodDisruptionBudget with the + menu to protect availability during disruptions'
     ],
     starCriteria: { time: 480, efficiency: 0.6, noFailures: false },
     nextLevel: 20
@@ -582,9 +593,9 @@ const CAMPAIGN_LEVELS = [
       { type: 'DNSResolutionFailure', triggerTime: 180, target: 'kube-dns', severity: 3 }
     ],
     hints: [
-      'Start with namespaces and core Deployments',
-      'Add Services before Ingress',
-      'Network Policies and RBAC improve your architecture score'
+      'Create 3 namespaces first (frontend, backend, data), then Deployments in each',
+      'Create Services for each Deployment, then add an Ingress to route external traffic',
+      'Add NetworkPolicies, Secrets, HPA, and probes to push your Architecture score above 75'
     ],
     starCriteria: { time: 900, efficiency: 0.6, noFailures: false },
     nextLevel: null
