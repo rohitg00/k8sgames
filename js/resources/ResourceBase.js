@@ -15,7 +15,7 @@ export class ResourceBase {
       this.apiVersion = meta.apiVersion || 'v1';
       this.metadata = {
         name: meta.name || 'unnamed',
-        namespace: meta.namespace || 'default',
+        namespace: meta.namespace ?? 'default',
         uid: generateUID(),
         labels: meta.labels ? { ...meta.labels } : {},
         annotations: meta.annotations ? { ...meta.annotations } : {},

@@ -588,8 +588,8 @@ export class ClusterState {
     const node = this.getByName('Node', nodeName, '');
     if (!node) return null;
 
-    const cpuSpec = node.spec.cpu || node.status.capacity?.cpu;
-    const memSpec = node.spec.memory || node.status.capacity?.memory;
+    const cpuSpec = node.spec.cpu || node.capacity?.cpu || node.status.capacity?.cpu;
+    const memSpec = node.spec.memory || node.capacity?.memory || node.status.capacity?.memory;
     const capacity = {
       cpu: cpuSpec ? this._parseCpu(cpuSpec) : 4000,
       memory: memSpec ? this._parseMemory(memSpec) : 8192,

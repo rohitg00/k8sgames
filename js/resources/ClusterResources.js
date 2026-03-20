@@ -55,7 +55,8 @@ export class Node extends ResourceBase {
     this.heartbeatTimer = 0;
     this.heartbeatInterval = 10;
     this.isCordon = false;
-    this.setStatus('Ready');
+    this.status.conditions = this.conditions;
+    this.status.phase = 'Running';
   }
 
   _parseCpu(cpu) {
