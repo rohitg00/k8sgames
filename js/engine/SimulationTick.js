@@ -122,6 +122,10 @@ export class SimulationTick {
         pod.setCondition('PodScheduled', 'True', 'Scheduled', `Successfully assigned to ${node.name}`);
         pod.setCondition('Initialized', 'True', 'PodInitialized');
         pod.setCondition('Ready', 'False', 'ContainersNotReady');
+
+        if (pod.metadata.ownerReferences.length > 0) {
+          this.cluster._rescheduledCount = (this.cluster._rescheduledCount || 0) + 1;
+        }
         pod.recordEvent('Normal', 'Scheduled', `Successfully assigned ${pod.namespace}/${pod.name} to ${node.name}`);
 
         this._initContainerStatuses(pod);

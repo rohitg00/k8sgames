@@ -551,6 +551,13 @@ export class GameEngine {
         this._addNotification('info', `Restarting rollout for ${kind || 'Deployment'} "${name}"`);
         return { success: true };
       }
+      case 'undo': {
+        this.cluster._rollbackCount = (this.cluster._rollbackCount || 0) + 1;
+        resource.metadata.generation++;
+        this._addNotification('info', `Rolled back ${kind || 'Deployment'} "${name}" to previous revision`);
+        this.eventBus.emit('resource:rollback', { uid: resource.uid, kind: kind || 'Deployment', name });
+        return { success: true };
+      }
       case 'status': {
         return {
           success: true,

@@ -294,9 +294,9 @@ const CAMPAIGN_LEVELS = [
       { kind: 'Namespace', name: 'frontend', spec: {} },
       { kind: 'Namespace', name: 'backend', spec: {} },
       { kind: 'Namespace', name: 'database', spec: {} },
-      { kind: 'Deployment', name: 'web', spec: { replicas: 2, namespace: 'frontend' } },
-      { kind: 'Deployment', name: 'api', spec: { replicas: 2, namespace: 'backend' } },
-      { kind: 'Deployment', name: 'postgres', spec: { replicas: 1, namespace: 'database' } }
+      { kind: 'Deployment', name: 'web', spec: { replicas: 2, namespace: 'frontend', template: { spec: { containers: [{ name: 'main', image: 'nginx:latest' }] } } } },
+      { kind: 'Deployment', name: 'api', spec: { replicas: 2, namespace: 'backend', template: { spec: { containers: [{ name: 'main', image: 'node:18' }] } } } },
+      { kind: 'Deployment', name: 'postgres', spec: { replicas: 1, namespace: 'database', template: { spec: { containers: [{ name: 'main', image: 'postgres:15' }] } } } }
     ],
     availableResources: ['NetworkPolicy', 'Service'],
     incidents: [
@@ -324,7 +324,7 @@ const CAMPAIGN_LEVELS = [
     startingResources: [
       { kind: 'Node', name: 'node-1', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
       { kind: 'Node', name: 'node-2', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
-      { kind: 'Deployment', name: 'coredns', spec: { replicas: 2, namespace: 'kube-system' } },
+      { kind: 'Deployment', name: 'coredns', spec: { replicas: 2, namespace: 'kube-system', template: { spec: { containers: [{ name: 'coredns', image: 'coredns:1.11' }] } } } },
       { kind: 'Service', name: 'kube-dns', spec: { namespace: 'kube-system', port: 53 } },
       { kind: 'Deployment', name: 'app', spec: { replicas: 3, template: { spec: { containers: [{ name: 'main', image: 'app:v1' }] } } } },
       { kind: 'Service', name: 'app-svc', spec: { port: 8080 } },
@@ -382,8 +382,8 @@ const CAMPAIGN_LEVELS = [
     startingResources: [
       { kind: 'Node', name: 'node-1', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
       { kind: 'Node', name: 'node-2', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
-      { kind: 'Deployment', name: 'api', spec: { replicas: 2 } },
-      { kind: 'Deployment', name: 'database', spec: { replicas: 1 } },
+      { kind: 'Deployment', name: 'api', spec: { replicas: 2, template: { spec: { containers: [{ name: 'main', image: 'node:18' }] } } } },
+      { kind: 'Deployment', name: 'database', spec: { replicas: 1, template: { spec: { containers: [{ name: 'main', image: 'postgres:15' }] } } } },
       { kind: 'ConfigMap', name: 'db-config', spec: { data: { DB_HOST: 'postgres', DB_PORT: '5432', DB_PASSWORD: 'exposed123' } } }
     ],
     availableResources: ['ConfigMap', 'Secret', 'Pod', 'Deployment'],
@@ -412,7 +412,7 @@ const CAMPAIGN_LEVELS = [
     startingResources: [
       { kind: 'Node', name: 'node-1', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
       { kind: 'Node', name: 'node-2', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
-      { kind: 'Deployment', name: 'database', spec: { replicas: 1 } }
+      { kind: 'Deployment', name: 'database', spec: { replicas: 1, template: { spec: { containers: [{ name: 'main', image: 'postgres:15' }] } } } }
     ],
     availableResources: ['PersistentVolume', 'PersistentVolumeClaim', 'StorageClass', 'StatefulSet'],
     incidents: [],
@@ -508,7 +508,7 @@ const CAMPAIGN_LEVELS = [
       { kind: 'Node', name: 'node-2', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
       { kind: 'Namespace', name: 'dev', spec: {} },
       { kind: 'Namespace', name: 'prod', spec: {} },
-      { kind: 'Deployment', name: 'app', spec: { replicas: 2, namespace: 'prod' } },
+      { kind: 'Deployment', name: 'app', spec: { replicas: 2, namespace: 'prod', template: { spec: { containers: [{ name: 'main', image: 'app:v1' }] } } } },
       { kind: 'ServiceAccount', name: 'admin', spec: { namespace: 'default', wildcard: true } }
     ],
     availableResources: ['Role', 'ClusterRole', 'RoleBinding', 'ClusterRoleBinding', 'ServiceAccount'],
@@ -540,9 +540,9 @@ const CAMPAIGN_LEVELS = [
       { kind: 'Node', name: 'node-2', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
       { kind: 'Node', name: 'node-3', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
       { kind: 'Node', name: 'node-4', spec: { cpu: '8', memory: '16Gi', status: 'Ready' } },
-      { kind: 'Deployment', name: 'web', spec: { replicas: 4 } },
-      { kind: 'Deployment', name: 'api', spec: { replicas: 3 } },
-      { kind: 'Deployment', name: 'worker', spec: { replicas: 2 } },
+      { kind: 'Deployment', name: 'web', spec: { replicas: 4, template: { spec: { containers: [{ name: 'main', image: 'nginx:latest' }] } } } },
+      { kind: 'Deployment', name: 'api', spec: { replicas: 3, template: { spec: { containers: [{ name: 'main', image: 'node:18' }] } } } },
+      { kind: 'Deployment', name: 'worker', spec: { replicas: 2, template: { spec: { containers: [{ name: 'main', image: 'worker:v1' }] } } } },
       { kind: 'Service', name: 'web-svc', spec: { port: 80 } },
       { kind: 'Service', name: 'api-svc', spec: { port: 3000 } }
     ],
