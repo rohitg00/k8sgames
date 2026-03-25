@@ -118,11 +118,12 @@ export class IncidentPanel {
   _onNewIncident(data) {
     const incident = {
       id: this.nextId++,
-      type: data.type || 'Unknown',
+      engineIncidentId: data.id || null,
+      type: data.type || data.name || 'Unknown',
       severity: data.severity || 'warning',
-      resource: data.resource || 'unknown',
+      resource: data.resource || data.target || 'unknown',
       resourceUid: data.uid,
-      message: data.message || 'An incident occurred',
+      message: data.message || data.description || 'An incident occurred',
       timestamp: Date.now(),
       status: 'active',
       resolvedAt: null,
@@ -130,7 +131,8 @@ export class IncidentPanel {
     };
     this.incidents.unshift(incident);
     window.game?.engine.emit('incident:count', { count: this._getActiveCount() });
-    if (this.visible) this._renderList();
+    this.show();
+    this._renderList();
   }
 
   addIncident(type, severity, resource, message, uid) {
@@ -142,6 +144,12 @@ export class IncidentPanel {
     if (!incident || incident.status === 'resolved') return;
     incident.status = 'resolved';
     incident.resolvedAt = Date.now();
+
+    const incidentEngine = window.game?.incidentEngine;
+    if (incidentEngine && incident.engineIncidentId) {
+      incidentEngine.resolveIncident(incident.engineIncidentId, 'manual');
+    }
+
     window.game?.engine.emit('incident:resolved', { id, type: incident.type });
     window.game?.engine.emit('incident:count', { count: this._getActiveCount() });
     window.game?.engine.emit('xp:gain', { amount: this._getXPForResolve(incident) });
