@@ -208,6 +208,9 @@ class ChaosMode {
     };
 
     this.gameEngine.emit('chaos:game-over', finalStats);
+    this.gameEngine.emit('mode:game-over', {
+      message: `Survived ${Math.round(this.survivalTime)}s | Wave ${this.waveNumber} | ${this.incidentsResolved} incidents resolved | Combo x${this.highestCombo}`
+    });
 
     return finalStats;
   }

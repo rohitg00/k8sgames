@@ -449,7 +449,7 @@ class CampaignMode {
       this.usedHints
     );
 
-    this.gameEngine.emit('campaign:level-completed', {
+    const completionData = {
       levelId: this.currentLevel,
       title: this.currentLevelDef.title,
       stars: result.stars,
@@ -458,6 +458,12 @@ class CampaignMode {
       efficiency: Math.round(efficiency * 100),
       hadFailures: this.hadFailures,
       nextLevel: this.currentLevelDef.nextLevel
+    };
+
+    this.gameEngine.emit('campaign:level-completed', completionData);
+    this.gameEngine.emit('mode:level-complete', {
+      ...completionData,
+      message: `Completed in ${Math.round(completionTime)}s with ${Math.round(efficiency * 100)}% efficiency. +${result.xpEarned} XP`
     });
 
     return result;

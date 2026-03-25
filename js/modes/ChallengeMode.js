@@ -580,6 +580,11 @@ class ChallengeMode {
       stars: result.stars,
       xpEarned: result.xpEarned
     });
+    this.gameEngine.emit('mode:level-complete', {
+      title: `${this.currentChallengeDef.title} Complete!`,
+      stars: result.stars,
+      message: `Finished in ${Math.round(this.elapsedTime)}s / ${this.currentChallengeDef.timeLimit}s. +${result.xpEarned} XP`
+    });
 
     return result;
   }
