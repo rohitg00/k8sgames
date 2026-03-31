@@ -67,8 +67,8 @@
     </div>
     <div class="flex items-center gap-2">
       <span id="draw-status" class="text-xs text-sky-400 mr-2"></span>
-      <button id="btn-connect" class="px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all">
-        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>Connect
+      <button id="btn-connect" class="px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all" title="Draw a line between two resources: click source, then click target">
+        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>Draw Line
       </button>
       <button id="btn-auto-layout" class="px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all">Auto-Layout</button>
       <div class="h-5 w-px bg-white/10"></div>
@@ -273,10 +273,10 @@
 
   <div class="fixed bottom-4 left-20 z-30 px-3 py-2 text-[10px] text-white/20 space-y-0.5">
     <div>Drag resources from palette to canvas</div>
-    <div>Click <strong class="text-white/40">Connect</strong> then click two resources to link them</div>
+    <div>Double-click resource to rename</div>
+    <div>Click <strong class="text-white/40">Draw Line</strong> then click two resources to link</div>
     <div>Right-click resource to delete</div>
-    <div><kbd class="px-1 bg-white/5 rounded">Esc</kbd> cancel connection</div>
-    <div><kbd class="px-1 bg-white/5 rounded">Del</kbd> delete selected</div>
+    <div><kbd class="px-1 bg-white/5 rounded">Esc</kbd> cancel &middot; <kbd class="px-1 bg-white/5 rounded">Del</kbd> delete selected</div>
   </div>
 
   <div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 text-[10px] text-white/15">
@@ -513,6 +513,68 @@
           this.placedPositions.delete(uid);
           this.customConnections = this.customConnections.filter(c => c.from !== uid && c.to !== uid);
           this.syncConnections();
+        });
+
+        canvas.addEventListener('dblclick', (e) => {
+          const rect = canvas.getBoundingClientRect();
+          const mouse = {
+            x: ((e.clientX - rect.left) / rect.width) * 2 - 1,
+            y: -((e.clientY - rect.top) / rect.height) * 2 + 1,
+          };
+          this.renderer.raycaster.setFromCamera(mouse, this.renderer.camera);
+          const intersects = this.renderer.raycaster.intersectObjects(this.renderer.pickableObjects, true);
+          if (intersects.length === 0) return;
+          let target = intersects[0].object;
+          while (target.parent && !target.userData.resourceId) target = target.parent;
+          if (!target.userData.resourceId) return;
+
+          const uid = target.userData.resourceId;
+          const resource = this.engine.cluster.resources.get(uid);
+          if (!resource) return;
+
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.value = resource.metadata.name;
+          input.className = 'fixed z-50 px-2 py-1 text-sm font-mono bg-gray-900 border border-sky-500/50 rounded text-white outline-none';
+          input.style.left = e.clientX + 'px';
+          input.style.top = e.clientY + 'px';
+          input.style.minWidth = '150px';
+          document.body.appendChild(input);
+          input.focus();
+          input.select();
+
+          const finish = () => {
+            const newName = input.value.trim();
+            if (newName && newName !== resource.metadata.name) {
+              resource.metadata.name = newName;
+              resource.name = newName;
+              const group = this.renderer.resourceMeshes.get(uid);
+              if (group) {
+                const oldLabel = group.children.find(c => c.userData?.isLabel);
+                if (oldLabel) {
+                  oldLabel.material.map.dispose();
+                  oldLabel.material.dispose();
+                  group.remove(oldLabel);
+                }
+                const pos = this.placedPositions.get(uid) || { x: 0, z: 0 };
+                this.renderer.removeResource(uid);
+                const renderable = {
+                  id: uid, type: resource.kind, name: newName,
+                  namespace: resource.metadata.namespace || 'default',
+                  status: resource.status?.phase || 'Running',
+                  x: pos.x, y: 0, z: pos.z,
+                };
+                this.renderer.addResource(renderable);
+              }
+            }
+            input.remove();
+          };
+
+          input.addEventListener('keydown', (ke) => {
+            if (ke.key === 'Enter') finish();
+            if (ke.key === 'Escape') input.remove();
+          });
+          input.addEventListener('blur', finish);
         });
       }
 
@@ -855,73 +917,53 @@
       }
 
       autoLayout() {
-        const resources = this.engine.cluster.getAllResources();
-        if (resources.length === 0) return;
+        const allResources = this.engine.cluster.getAllResources();
+        if (allResources.length === 0) return;
 
         const tiers = {
-          ingress: [],
-          network: [],
-          workloads: [],
-          storage: [],
-          nodes: [],
-          config: [],
+          namespace:  { kinds: ['Namespace'], z: -10, spacing: 5 },
+          node:       { kinds: ['Node'], z: -5, spacing: 6 },
+          workload:   { kinds: ['Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet'], z: 0, spacing: 4 },
+          batch:      { kinds: ['Job', 'CronJob'], z: 3, spacing: 3.5 },
+          pod:        { kinds: ['Pod'], z: 6, spacing: 2.5 },
+          network:    { kinds: ['Service', 'Ingress', 'NetworkPolicy'], z: 10, spacing: 4 },
+          config:     { kinds: ['ConfigMap', 'Secret'], z: 14, spacing: 3.5 },
+          storage:    { kinds: ['PersistentVolumeClaim', 'PersistentVolume', 'StorageClass'], z: 17, spacing: 4 },
+          scaling:    { kinds: ['HorizontalPodAutoscaler', 'ResourceQuota', 'LimitRange', 'PodDisruptionBudget'], z: 20, spacing: 3.5 },
+          rbac:       { kinds: ['ServiceAccount', 'Role', 'ClusterRole', 'RoleBinding', 'ClusterRoleBinding'], z: 23, spacing: 3 },
         };
-
-        for (const r of resources) {
-          const tier = this.getTier(r.kind);
-          tiers[tier].push(r);
-        }
 
         const targets = new Map();
-        const SPACING_X = 5;
-        const TIER_GAP_Z = 7;
 
-        const tierOrder = ['ingress', 'network', 'workloads', 'storage', 'nodes'];
-        const sideItems = tiers.config;
-
-        let tierZ = 0;
-        for (const tierName of tierOrder) {
-          const items = tiers[tierName];
-          if (items.length === 0) continue;
-          const totalWidth = (items.length - 1) * SPACING_X;
+        for (const [, tier] of Object.entries(tiers)) {
+          const resources = allResources.filter(r => tier.kinds.includes(r.kind));
+          if (resources.length === 0) continue;
+          const totalWidth = (resources.length - 1) * tier.spacing;
           const startX = -totalWidth / 2;
-          items.forEach((r, i) => {
-            const x = startX + i * SPACING_X;
-            const z = tierZ;
-            this.placedPositions.set(r.uid, { x, z });
-            targets.set(r.uid, { x, y: 0, z });
-          });
-          tierZ += TIER_GAP_Z;
-        }
-
-        if (sideItems.length > 0) {
-          const allX = [...targets.values()].map(t => t.x);
-          const maxX = allX.length > 0 ? Math.max(...allX) : 0;
-          const sideX = maxX + 8;
-          const totalHeight = (sideItems.length - 1) * 4;
-          const startZ = -totalHeight / 2 + (tierZ / 2);
-          sideItems.forEach((r, i) => {
-            const x = sideX;
-            const z = startZ + i * 4;
-            this.placedPositions.set(r.uid, { x, z });
-            targets.set(r.uid, { x, y: 0, z });
+          resources.forEach((r, i) => {
+            const uid = r.uid || r.metadata?.uid;
+            targets.set(uid, { x: startX + i * tier.spacing, y: 0, z: tier.z });
           });
         }
 
-        this.renderer.animateToPositions(targets, 600);
-        setTimeout(() => this.syncConnections(), 650);
-      }
+        const unmatched = allResources.filter(r => !targets.has(r.uid || r.metadata?.uid));
+        if (unmatched.length > 0) {
+          const startX = -(unmatched.length - 1) * 3 / 2;
+          unmatched.forEach((r, i) => {
+            targets.set(r.uid || r.metadata?.uid, { x: startX + i * 3, y: 0, z: 26 });
+          });
+        }
 
-      getTier(kind) {
-        const map = {
-          Ingress: 'ingress',
-          Service: 'network', NetworkPolicy: 'network', HorizontalPodAutoscaler: 'network',
-          Pod: 'workloads', Deployment: 'workloads', ReplicaSet: 'workloads', StatefulSet: 'workloads', DaemonSet: 'workloads', Job: 'workloads', CronJob: 'workloads',
-          PersistentVolumeClaim: 'storage', Namespace: 'storage', ResourceQuota: 'storage',
-          Node: 'nodes',
-          ConfigMap: 'config', Secret: 'config', Role: 'config', RoleBinding: 'config', ServiceAccount: 'config',
-        };
-        return map[kind] || 'workloads';
+        this.renderer.animateToPositions(targets, 800);
+
+        for (const [uid, pos] of targets) {
+          this.placedPositions.set(uid, pos);
+        }
+
+        setTimeout(() => {
+          this.syncConnections();
+          this.renderer.resetCamera();
+        }, 850);
       }
     }
 
