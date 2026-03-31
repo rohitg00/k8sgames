@@ -104,6 +104,10 @@ export class CommandBar {
 
     this.input.addEventListener('keydown', (e) => this._onInputKeydown(e));
     this.input.addEventListener('input', () => this._onInputChange());
+
+    this._boundShowCommandBar = () => this.show();
+    const engine = window.game?.engine;
+    if (engine) { engine.on('ui:show-command-bar', this._boundShowCommandBar); }
   }
 
   _onGlobalKeydown(e) {
@@ -222,8 +226,38 @@ export class CommandBar {
     }
   }
 
+  _checkEasterEggs(raw) {
+    const lower = raw.toLowerCase().trim();
+    if (lower === 'get coffee') {
+      return { message: "Error: resource type 'coffee' not found. But here's a \u2615 for your effort! +5 XP", xp: 5, achievement: 'coffee-break' };
+    }
+    if (lower === 'explain life') {
+      return { message: "KIND:     Life\nVERSION:  v1\nDESCRIPTION:\n  42. That's it. That's the explanation.", color: 'text-sky-400' };
+    }
+    if (lower.startsWith('run') && lower.includes('--image=doom')) {
+      return { message: "Nice try. We only run containers here, not demons. +10 XP", xp: 10, achievement: 'doom-runner' };
+    }
+    if (lower.match(/^delete\s+(ns|namespace|namespaces)\s+kube-system/)) {
+      return { message: "WHOA! You just tried to nuke the control plane. In production, this would page every SRE on the planet. +25 XP", xp: 25, achievement: 'chaos-monkey', color: 'text-red-400' };
+    }
+    return null;
+  }
+
   _executeCommand(raw) {
     if (!raw) return;
+
+    if (raw.toLowerCase().startsWith('sudo ')) {
+      this.history.unshift(raw);
+      if (this.history.length > 50) this.history.pop();
+      this.historyIndex = -1;
+      this.input.value = '';
+      this.suggestions = [];
+      this.suggestionsEl.classList.add('hidden');
+      this._appendOutput(`$ kubectl ${raw}`, 'text-green-400/80');
+      this._appendOutput("Permission denied. Just kidding \u2014 you're already root in this cluster.", 'text-purple-400');
+      return;
+    }
+
     this.history.unshift(raw);
     if (this.history.length > 50) this.history.pop();
     this.historyIndex = -1;
@@ -232,6 +266,17 @@ export class CommandBar {
     this.suggestionsEl.classList.add('hidden');
 
     this._appendOutput(`$ kubectl ${raw}`, 'text-green-400/80');
+
+    window.game?.engine.emit('command:raw', { command: raw });
+    window.game?.engine.emit('command:executed', { command: raw });
+
+    const easterEgg = this._checkEasterEggs(raw);
+    if (easterEgg) {
+      this._appendOutput(easterEgg.message, easterEgg.color || 'text-amber-400');
+      if (easterEgg.xp) window.game?.engine.emit('xp:gain', { amount: easterEgg.xp });
+      if (easterEgg.achievement) window.game?.engine.emit('easter-egg:triggered', { id: easterEgg.achievement });
+      return;
+    }
 
     const parts = raw.split(/\s+/);
     const cmd = parts[0]?.toLowerCase();
@@ -549,6 +594,12 @@ export class CommandBar {
       concurrentPods: (cluster.getResourcesByKind('Pod') || []).length,
     });
     engine.emit('xp:gain', { amount: 10 });
+
+    if (name.toLowerCase() === 'konami') {
+      engine.emit('easter-egg:triggered', { id: 'konami-code' });
+      engine.emit('xp:gain', { amount: 100 });
+    }
+
     return { error: false, message: `pod/${name} created` };
   }
 
@@ -1076,6 +1127,7 @@ export class CommandBar {
 
   destroy() {
     document.removeEventListener('keydown', this._boundKeydown);
+    window.game?.engine?.off?.('ui:show-command-bar', this._boundShowCommandBar);
     this.container?.remove();
   }
 }

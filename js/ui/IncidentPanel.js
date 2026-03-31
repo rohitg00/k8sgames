@@ -25,6 +25,8 @@ export class IncidentPanel {
     this.filter = 'active';
     this._boundToggle = this._onToggle.bind(this);
     this._boundIncident = this._onNewIncident.bind(this);
+    this._boundCommandExecuted = this._onCommandExecuted.bind(this);
+    this._requiredSteps = 2;
     this._timerInterval = null;
   }
 
@@ -82,6 +84,7 @@ export class IncidentPanel {
     if (engine) {
       engine.on('ui:toggle-incidents', this._boundToggle);
       engine.on('incident:created', this._boundIncident);
+      engine.on('command:raw', this._boundCommandExecuted);
     }
   }
 
@@ -107,7 +110,7 @@ export class IncidentPanel {
       timestamp: Date.now(),
       status: 'active',
       resolvedAt: null,
-      expanded: false,
+      expanded: true,
       completedSteps: new Set(),
     };
     this.incidents.unshift(incident);
@@ -193,6 +196,8 @@ export class IncidentPanel {
     const steps = INVESTIGATION_STEPS[incident.type] || [];
     const elapsed = this._formatElapsed(Date.now() - incident.timestamp);
     const stars = this._getStarRating(incident);
+    const completedCount = incident.completedSteps?.size || 0;
+    const canResolve = steps.length === 0 || completedCount >= this._requiredSteps;
 
     return `
       <div class="rounded-lg border ${config.border} ${config.bg} overflow-hidden" data-incident-id="${incident.id}">
@@ -215,13 +220,18 @@ export class IncidentPanel {
 
           ${incident.expanded && steps.length > 0 ? `
             <div class="mt-2 pt-2 border-t border-white/5">
-              <div class="text-white/30 text-[10px] uppercase tracking-wider mb-1.5">Investigation</div>
+              <div class="flex items-center justify-between mb-1.5">
+                <div class="text-white/30 text-[10px] uppercase tracking-wider">Investigation</div>
+                ${incident.status === 'active' ? `<div class="text-[10px] font-mono ${completedCount >= this._requiredSteps ? 'text-green-400' : 'text-white/30'}">${completedCount}/${steps.length} investigated</div>` : ''}
+              </div>
               <div class="space-y-1">
-                ${steps.map(step => {
+                ${steps.map((step, idx) => {
                   const cmd = step.cmd.replace('{name}', incident.resource);
+                  const done = incident.completedSteps?.has(idx);
                   return `
                     <div class="flex items-center gap-2 group">
-                      <button class="flex-1 text-left px-2 py-1 text-[11px] font-mono text-white/40 hover:text-white/60 bg-white/5 rounded hover:bg-white/10 transition-colors run-cmd" data-cmd="${this._escapeHTML(cmd)}">
+                      <span class="text-[11px] w-4 text-center ${done ? 'text-green-400' : 'text-white/15'}">${done ? '\u2713' : '\u25CB'}</span>
+                      <button class="flex-1 text-left px-2 py-1 text-[11px] font-mono ${done ? 'text-green-400/60 bg-green-400/5' : 'text-white/40 hover:text-white/60 bg-white/5 hover:bg-white/10'} rounded transition-colors run-cmd" data-cmd="${this._escapeHTML(cmd)}" title="Click to copy to command bar">
                         ${this._escapeHTML(step.label)}
                       </button>
                     </div>
@@ -237,11 +247,18 @@ export class IncidentPanel {
                 ${incident.expanded ? 'Hide steps' : 'Investigate'}
               </button>
             ` : ''}
-            ${incident.status === 'active' ? `
-              <button class="resolve-btn ml-auto px-2 py-0.5 text-[10px] text-green-400 hover:bg-green-400/10 rounded transition-colors">
-                Resolve
-              </button>
-            ` : `
+            ${incident.status === 'active' ? (
+              canResolve ? `
+                <button class="resolve-btn ml-auto px-2 py-0.5 text-[10px] text-green-400 hover:bg-green-400/10 rounded transition-colors">
+                  Resolve
+                </button>
+              ` : `
+                <span class="ml-auto flex items-center gap-1 text-[10px] text-white/20" title="Run investigation commands first">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                  Investigate first
+                </span>
+              `
+            ) : `
               <span class="ml-auto text-[10px] text-green-400/50">Resolved</span>
             `}
           </div>
@@ -274,8 +291,16 @@ export class IncidentPanel {
     list.querySelectorAll('.run-cmd').forEach(btn => {
       btn.addEventListener('click', () => {
         const cmd = btn.dataset.cmd;
-        window.game?.engine.emit('ui:run-command', { command: cmd });
-        this._onCommandExecuted(cmd);
+        const cmdInput = document.getElementById('cmd-input');
+        if (cmdInput) {
+          const stripped = cmd.replace(/^kubectl\s+/, '');
+          cmdInput.value = stripped;
+          cmdInput.focus();
+          const cmdBar = document.getElementById('command-bar');
+          if (cmdBar?.classList.contains('translate-y-full')) {
+            window.game?.engine.emit('ui:show-command-bar');
+          }
+        }
       });
     });
   }
@@ -335,20 +360,46 @@ export class IncidentPanel {
     else this.show();
   }
 
-  _onCommandExecuted(cmd) {
-    for (const incident of this.incidents) {
-      if (incident.status !== 'active') continue;
+  _onCommandExecuted(data) {
+    const raw = (data.command || '').trim();
+    if (!raw) return;
+    const activeIncidents = this.incidents.filter(i => i.status === 'active');
+    for (const incident of activeIncidents) {
       const steps = INVESTIGATION_STEPS[incident.type] || [];
-      for (let i = 0; i < steps.length; i++) {
-        const fullCmd = steps[i].cmd.replace('{name}', incident.resource);
-        if (fullCmd === cmd) {
-          if (!incident.completedSteps) incident.completedSteps = new Set();
-          incident.completedSteps.add(i);
+      steps.forEach((step, idx) => {
+        if (incident.completedSteps.has(idx)) return;
+        const expanded = step.cmd.replace('{name}', incident.resource);
+        if (this._fuzzyMatchCommand(raw, expanded)) {
+          incident.completedSteps.add(idx);
+          window.game?.engine.emit('xp:gain', { amount: 10 });
         }
-      }
+      });
     }
-    this._renderList();
+    if (this.visible) this._renderList();
     this._saveInvestigationProgress();
+  }
+
+  _fuzzyMatchCommand(userCmd, stepCmd) {
+    const normalize = (s) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+    const u = normalize(userCmd);
+    const s = normalize(stepCmd);
+    if (u === s) return true;
+    const uParts = u.split(' ');
+    const sParts = s.split(' ');
+    if (uParts.length < 2 || sParts.length < 2) return false;
+    if (uParts[0] !== sParts[0]) return false;
+    if (sParts.length >= 3) {
+      const uPrefix = uParts.slice(0, sParts.length - 1).join(' ');
+      const sPrefix = sParts.slice(0, -1).join(' ');
+      if (uPrefix === sPrefix) return true;
+    }
+    const minLen = Math.min(uParts.length, sParts.length, 3);
+    if (minLen >= 2) {
+      const uJoined = uParts.slice(0, minLen).join(' ');
+      const sJoined = sParts.slice(0, minLen).join(' ');
+      if (uJoined === sJoined) return true;
+    }
+    return false;
   }
 
   _saveInvestigationProgress() {
@@ -382,6 +433,7 @@ export class IncidentPanel {
     if (engine) {
       engine.off?.('ui:toggle-incidents', this._boundToggle);
       engine.off?.('incident:created', this._boundIncident);
+      engine.off?.('command:raw', this._boundCommandExecuted);
     }
     if (this._timerInterval) clearInterval(this._timerInterval);
     this.container?.remove();
