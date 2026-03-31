@@ -16,7 +16,7 @@ export class SettingsPanel {
 
   init() {
     this.container = document.createElement('div');
-    this.container.id = 'settings-panel';
+    this.container.id = 'ingame-settings-panel';
     this.container.className = 'fixed inset-0 z-50 hidden';
     this.container.innerHTML = this._buildHTML();
     document.body.appendChild(this.container);
@@ -51,11 +51,11 @@ export class SettingsPanel {
   _buildHTML() {
     const diff = this.settings.difficulty;
     return `
-      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" id="settings-backdrop"></div>
+      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" data-action="backdrop"></div>
       <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] max-h-[80vh] overflow-y-auto rounded-xl border border-white/10 bg-gray-900/95 backdrop-blur-xl shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-white/5">
           <h2 class="text-white/90 text-base font-semibold">Settings</h2>
-          <button id="settings-close" class="p-1 text-white/30 hover:text-white/60 transition-colors">
+          <button data-action="close" class="p-1 text-white/30 hover:text-white/60 transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -95,22 +95,22 @@ export class SettingsPanel {
           <div>
             <div class="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">Camera Speed</div>
             <div class="flex items-center gap-3">
-              <input type="range" id="settings-camera-speed" min="0.5" max="2.0" step="0.1" value="${this.settings.cameraSpeed}" class="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-sky-400">
-              <span id="settings-camera-speed-val" class="text-white/60 text-xs font-mono w-8">${this.settings.cameraSpeed}x</span>
+              <input type="range" data-action="camera-speed" min="0.5" max="2.0" step="0.1" value="${this.settings.cameraSpeed}" class="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-sky-400">
+              <span data-label="camera-speed-val" class="text-white/60 text-xs font-mono w-8">${this.settings.cameraSpeed}x</span>
             </div>
           </div>
 
           <div class="pt-2 border-t border-white/5">
             <div class="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">Data</div>
             <div class="flex gap-2">
-              <button id="settings-reset-progress" class="px-3 py-1.5 text-xs text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors">Reset All Progress</button>
-              <button id="settings-export" class="px-3 py-1.5 text-xs text-white/50 border border-white/10 rounded-lg hover:bg-white/5 transition-colors">Export Save</button>
+              <button data-action="reset-progress" class="px-3 py-1.5 text-xs text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors">Reset All Progress</button>
+              <button data-action="export" class="px-3 py-1.5 text-xs text-white/50 border border-white/10 rounded-lg hover:bg-white/5 transition-colors">Export Save</button>
             </div>
           </div>
         </div>
 
         <div class="px-6 py-3 border-t border-white/5 flex justify-end">
-          <button id="settings-done" class="px-4 py-1.5 text-sm text-sky-400 bg-sky-400/10 rounded-lg hover:bg-sky-400/20 transition-colors font-medium">Done</button>
+          <button data-action="done" class="px-4 py-1.5 text-sm text-sky-400 bg-sky-400/10 rounded-lg hover:bg-sky-400/20 transition-colors font-medium">Done</button>
         </div>
       </div>
     `;
@@ -132,9 +132,11 @@ export class SettingsPanel {
   }
 
   _bindEvents() {
-    document.getElementById('settings-backdrop').addEventListener('click', () => this.hide());
-    document.getElementById('settings-close').addEventListener('click', () => this.hide());
-    document.getElementById('settings-done').addEventListener('click', () => this.hide());
+    const $ = (sel) => this.container.querySelector(sel);
+
+    $('[data-action="backdrop"]').addEventListener('click', () => this.hide());
+    $('[data-action="close"]').addEventListener('click', () => this.hide());
+    $('[data-action="done"]').addEventListener('click', () => this.hide());
 
     this.container.querySelectorAll('.settings-difficulty').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -155,17 +157,17 @@ export class SettingsPanel {
       });
     });
 
-    const slider = document.getElementById('settings-camera-speed');
+    const slider = $('[data-action="camera-speed"]');
     if (slider) {
       slider.addEventListener('input', () => {
         this.settings.cameraSpeed = parseFloat(slider.value);
-        document.getElementById('settings-camera-speed-val').textContent = this.settings.cameraSpeed + 'x';
+        $('[data-label="camera-speed-val"]').textContent = this.settings.cameraSpeed + 'x';
         this._saveSettings();
         this._applySettings();
       });
     }
 
-    document.getElementById('settings-reset-progress').addEventListener('click', () => {
+    $('[data-action="reset-progress"]').addEventListener('click', () => {
       if (confirm('Reset ALL game progress? This cannot be undone.')) {
         localStorage.removeItem('k8sgames_progress');
         localStorage.removeItem('k8sgames_investigation');
@@ -173,7 +175,7 @@ export class SettingsPanel {
       }
     });
 
-    document.getElementById('settings-export').addEventListener('click', () => {
+    $('[data-action="export"]').addEventListener('click', () => {
       const data = {
         progress: localStorage.getItem('k8sgames_progress'),
         settings: localStorage.getItem(STORAGE_KEY),
