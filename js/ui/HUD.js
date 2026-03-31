@@ -1,4 +1,5 @@
 import { XP_LEVELS } from '../engine/ScoringEngine.js';
+import { SettingsPanel } from './SettingsPanel.js';
 
 export class HUD {
   constructor() {
@@ -16,6 +17,10 @@ export class HUD {
     this._boundResolve = this._onResolve.bind(this);
     this._boundXP = this._onXPGain.bind(this);
     this._boundSelect = this._onResourceSelect.bind(this);
+    this._logoClickCount = 0;
+    this._logoClickTimer = null;
+    this._partyModeActive = false;
+    this.settingsPanel = null;
   }
 
   init() {
@@ -28,6 +33,8 @@ export class HUD {
     this._bindEvents();
     this._bindGameEvents();
     this._updateAll();
+    this.settingsPanel = new SettingsPanel();
+    this.settingsPanel.init();
     if (window._ghStars) {
       const el = document.getElementById('hud-github-stars');
       if (el) el.textContent = window._ghStars;
@@ -45,7 +52,7 @@ export class HUD {
           <div class="hud-divider h-5 w-px bg-white/10"></div>
           <div class="flex items-center gap-2">
             <div id="hud-health" class="w-3 h-3 rounded-full bg-green-400 shadow-lg shadow-green-400/50 transition-colors duration-500"></div>
-            <span class="text-white/90 text-sm font-semibold tracking-wide">K8s Games</span>
+            <span id="hud-logo-text" class="text-white/90 text-sm font-semibold tracking-wide">K8s Games</span>
           </div>
           <div class="hud-divider h-5 w-px bg-white/10"></div>
           <div class="flex items-center gap-3 text-xs text-white/60">
@@ -164,7 +171,7 @@ export class HUD {
       window.game?.app?.returnToMenu();
     });
     this.elements['hud-settings'].addEventListener('click', () => {
-      document.getElementById('settings-panel')?.classList.add('active');
+      this.settingsPanel?.toggle();
     });
     this.elements['hud-pause'].addEventListener('click', () => this._togglePause());
     this.elements['hud-speed-1'].addEventListener('click', () => this._setSpeed(1));
@@ -173,6 +180,12 @@ export class HUD {
     this.elements['hud-alerts'].addEventListener('click', () => {
       window.game?.engine.emit('ui:toggle-incidents');
     });
+
+    const logoText = document.getElementById('hud-logo-text');
+    if (logoText) {
+      logoText.style.cursor = 'pointer';
+      logoText.addEventListener('click', () => this._onLogoClick());
+    }
   }
 
   _bindGameEvents() {
@@ -390,7 +403,39 @@ export class HUD {
     return div.innerHTML;
   }
 
+  _onLogoClick() {
+    this._logoClickCount++;
+    clearTimeout(this._logoClickTimer);
+    this._logoClickTimer = setTimeout(() => { this._logoClickCount = 0; }, 2000);
+    if (this._logoClickCount >= 7 && !this._partyModeActive) {
+      this._logoClickCount = 0;
+      this._activatePartyMode();
+    }
+  }
+
+  _activatePartyMode() {
+    this._partyModeActive = true;
+    const style = document.createElement('style');
+    style.id = 'party-mode-style';
+    style.textContent = `
+      @keyframes party-rainbow { 0% { filter: hue-rotate(0deg) brightness(1.2); } 50% { filter: hue-rotate(180deg) brightness(1.3); } 100% { filter: hue-rotate(360deg) brightness(1.2); } }
+      .party-mode * { animation: party-rainbow 0.5s linear infinite; }
+    `;
+    document.head.appendChild(style);
+    const target = document.getElementById('cluster-view') || document.querySelector('canvas') || document.body;
+    target.classList.add('party-mode');
+    window.game?.engine.emit('easter-egg:triggered', { id: 'party-mode' });
+    window.game?.engine.emit('xp:gain', { amount: 50 });
+    this._partyModeTimeout = setTimeout(() => {
+      target.classList.remove('party-mode');
+      document.getElementById('party-mode-style')?.remove();
+      this._partyModeActive = false;
+    }, 10000);
+  }
+
   destroy() {
+    clearTimeout(this._logoClickTimer);
+    clearTimeout(this._partyModeTimeout);
     const engine = window.game?.engine;
     if (engine) {
       engine.off?.('tick', this._boundTick);
@@ -399,6 +444,7 @@ export class HUD {
       engine.off?.('xp:gain', this._boundXP);
       engine.off?.('resource:selected', this._boundSelect);
     }
+    this.settingsPanel?.destroy();
     this.container?.remove();
   }
 }

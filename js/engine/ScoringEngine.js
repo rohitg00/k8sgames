@@ -118,6 +118,15 @@ class ScoringEngine {
       this.saveProgress();
     });
 
+    this.gameEngine.on('easter-egg:triggered', (data) => {
+      if (!this.progress.stats.easterEggs) this.progress.stats.easterEggs = {};
+      if (!this.progress.stats.easterEggs[data.id]) {
+        this.progress.stats.easterEggs[data.id] = true;
+        this.checkAchievements();
+        this.saveProgress();
+      }
+    });
+
     const checkNightOwl = () => {
       const hour = new Date().getHours();
       if (hour >= 0 && hour < 4) {

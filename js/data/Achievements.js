@@ -358,6 +358,51 @@ const ACHIEVEMENTS = [
     category: 'Secret',
     condition: (stats) => stats.highestCombo >= 10,
     xpReward: 500
+  },
+  {
+    id: 'doom-runner',
+    name: 'Doom Runner',
+    description: 'Try to run doom in the cluster.',
+    icon: 'skull',
+    category: 'Secret',
+    condition: (stats) => stats.easterEggs?.['doom-runner'] === true,
+    xpReward: 10
+  },
+  {
+    id: 'chaos-monkey',
+    name: 'Chaos Monkey',
+    description: 'Delete the kube-system namespace.',
+    icon: 'monkey',
+    category: 'Secret',
+    condition: (stats) => stats.easterEggs?.['chaos-monkey'] === true,
+    xpReward: 25
+  },
+  {
+    id: 'coffee-break',
+    name: 'Coffee Break',
+    description: 'Order coffee from the cluster.',
+    icon: 'coffee',
+    category: 'Secret',
+    condition: (stats) => stats.easterEggs?.['coffee-break'] === true,
+    xpReward: 5
+  },
+  {
+    id: 'party-mode',
+    name: 'Party Mode',
+    description: 'Find the hidden disco.',
+    icon: 'disco',
+    category: 'Secret',
+    condition: (stats) => stats.easterEggs?.['party-mode'] === true,
+    xpReward: 50
+  },
+  {
+    id: 'konami-code',
+    name: 'Up Up Down Down',
+    description: 'Create a Pod named konami.',
+    icon: 'gamepad',
+    category: 'Secret',
+    condition: (stats) => stats.easterEggs?.['konami-code'] === true,
+    xpReward: 100
   }
 ];
 

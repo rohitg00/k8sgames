@@ -592,6 +592,113 @@ const INCIDENT_DEFS = [
     ],
     kubectlCommands: ['kubectl create secret', 'kubectl delete configmap', 'kubectl edit deployment'],
     autoResolveTime: null
+  },
+  {
+    id: 'statefulset-ordered-ready-stuck',
+    name: 'StatefulSetOrderedReadyStuck',
+    category: 'Workload',
+    severity: 3,
+    description: 'StatefulSet is stuck waiting for Pod N-1 to become Ready before creating Pod N.',
+    visualEffect: 'pulse-yellow',
+    affectedResourceTypes: ['StatefulSet', 'Pod'],
+    investigationSteps: [
+      { command: 'kubectl get statefulset <pod>', hint: 'Check current vs desired replicas in StatefulSet status' },
+      { command: 'kubectl get pods -l app=<pod>', hint: 'Find which Pod ordinal is not Ready' },
+      { command: 'kubectl describe pod <pod>', hint: 'Check why the blocking Pod is not Ready' },
+      { command: 'kubectl logs <pod>', hint: 'Check application logs for startup failures' }
+    ],
+    resolutionActions: [
+      { action: 'fix-readiness', label: 'Fix readiness probe on stuck Pod', difficulty: 2 },
+      { action: 'delete-stuck-pod', label: 'Delete the stuck Pod to retry', difficulty: 1 },
+      { action: 'switch-parallel', label: 'Change podManagementPolicy to Parallel', difficulty: 2 }
+    ],
+    kubectlCommands: ['kubectl get statefulset', 'kubectl describe pod', 'kubectl delete pod'],
+    autoResolveTime: null
+  },
+  {
+    id: 'resource-quota-exceeded',
+    name: 'ResourceQuotaExceeded',
+    category: 'Workload',
+    severity: 3,
+    description: 'Pod creation blocked because namespace ResourceQuota limits have been reached.',
+    visualEffect: 'pulse-yellow',
+    affectedResourceTypes: ['Pod', 'Deployment', 'ResourceQuota'],
+    investigationSteps: [
+      { command: 'kubectl describe resourcequota -n <namespace>', hint: 'Check used vs hard limits for CPU, memory, and pod count' },
+      { command: 'kubectl get pods -n <namespace>', hint: 'Count running Pods against quota' },
+      { command: 'kubectl top pods -n <namespace> --sort-by=cpu', hint: 'Find resource-heavy Pods to optimize' }
+    ],
+    resolutionActions: [
+      { action: 'increase-quota', label: 'Increase ResourceQuota limits', difficulty: 1 },
+      { action: 'optimize-requests', label: 'Reduce resource requests on Pods', difficulty: 2 },
+      { action: 'delete-unused', label: 'Delete idle Pods to free quota', difficulty: 1 }
+    ],
+    kubectlCommands: ['kubectl describe resourcequota', 'kubectl edit resourcequota', 'kubectl top pods'],
+    autoResolveTime: null
+  },
+  {
+    id: 'init-container-crash',
+    name: 'InitContainerCrash',
+    category: 'Pod',
+    severity: 3,
+    description: 'Init container is crashing, blocking the main containers from starting.',
+    visualEffect: 'pulse-red',
+    affectedResourceTypes: ['Pod', 'Deployment'],
+    investigationSteps: [
+      { command: 'kubectl describe pod <pod>', hint: 'Check Init Container status in the Init Containers section' },
+      { command: 'kubectl logs <pod> -c init', hint: 'View init container logs for crash reason' },
+      { command: 'kubectl get pod <pod> -o jsonpath="{.status.initContainerStatuses}"', hint: 'Check init container exit codes' }
+    ],
+    resolutionActions: [
+      { action: 'fix-init-image', label: 'Fix init container image or command', difficulty: 2 },
+      { action: 'fix-init-config', label: 'Fix ConfigMap/Secret referenced by init container', difficulty: 2 },
+      { action: 'remove-init', label: 'Remove unnecessary init container', difficulty: 1 }
+    ],
+    kubectlCommands: ['kubectl describe pod', 'kubectl logs -c init', 'kubectl edit deployment'],
+    autoResolveTime: null
+  },
+  {
+    id: 'loadbalancer-pending',
+    name: 'LoadBalancerPending',
+    category: 'Network',
+    severity: 2,
+    description: 'Service of type LoadBalancer is stuck in Pending state. External IP never assigned.',
+    visualEffect: 'pulse-yellow',
+    affectedResourceTypes: ['Service'],
+    investigationSteps: [
+      { command: 'kubectl get svc <service>', hint: 'Check EXTERNAL-IP column — should not be <pending>' },
+      { command: 'kubectl describe svc <service>', hint: 'Look for events about LoadBalancer provisioning' },
+      { command: 'kubectl get events --field-selector involvedObject.name=<service>', hint: 'Check for cloud provider errors' }
+    ],
+    resolutionActions: [
+      { action: 'switch-nodeport', label: 'Change to NodePort type instead', difficulty: 1 },
+      { action: 'fix-cloud-config', label: 'Fix cloud provider configuration', difficulty: 3 },
+      { action: 'use-ingress', label: 'Use Ingress for L7 routing instead', difficulty: 2 }
+    ],
+    kubectlCommands: ['kubectl get svc', 'kubectl describe svc', 'kubectl edit svc'],
+    autoResolveTime: null
+  },
+  {
+    id: 'webhook-rejection',
+    name: 'WebhookAdmissionRejection',
+    category: 'ControlPlane',
+    severity: 4,
+    description: 'Admission webhook is rejecting resource creation. Pods cannot be scheduled.',
+    visualEffect: 'alert-red-border',
+    affectedResourceTypes: ['Pod', 'Deployment'],
+    investigationSteps: [
+      { command: 'kubectl get validatingwebhookconfigurations', hint: 'List all validating webhooks' },
+      { command: 'kubectl get mutatingwebhookconfigurations', hint: 'List all mutating webhooks' },
+      { command: 'kubectl describe pod <pod>', hint: 'Check Events for admission webhook error messages' },
+      { command: 'kubectl get events --field-selector reason=FailedCreate', hint: 'Find webhook rejection events' }
+    ],
+    resolutionActions: [
+      { action: 'fix-webhook-config', label: 'Fix webhook service endpoint', difficulty: 3 },
+      { action: 'add-exclusion', label: 'Add namespace exclusion to webhook', difficulty: 2 },
+      { action: 'delete-webhook', label: 'Delete the blocking webhook (emergency)', difficulty: 1 }
+    ],
+    kubectlCommands: ['kubectl get validatingwebhookconfigurations', 'kubectl describe pod', 'kubectl delete validatingwebhookconfiguration'],
+    autoResolveTime: 90
   }
 ];
 
