@@ -366,18 +366,21 @@
         this.bindProps();
 
         this.renderer.start();
+        const origTick = this.engine.simulation.tick.bind(this.engine.simulation);
+        this.engine.simulation.tick = () => {};
         this.engine.start();
 
         this.engine.eventBus.on('cluster:added', (data) => {
           const resource = data.resource;
           if (!resource) return;
+          resource.status.phase = resource.kind === 'Node' ? 'Ready' : 'Running';
           const pos = this.placedPositions.get(resource.uid);
           const renderable = {
             id: resource.uid,
             type: resource.kind,
             name: resource.metadata?.name || resource.name,
             namespace: resource.metadata?.namespace || 'default',
-            status: resource.status?.phase || 'Running',
+            status: 'Running',
             x: pos?.x || 0,
             y: 0,
             z: pos?.z || 0,
