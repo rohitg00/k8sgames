@@ -618,6 +618,9 @@
 
       bindToolbar() {
         document.getElementById('btn-connect').addEventListener('click', () => {
+          if (this.connectionSource) {
+            this.renderer._applyMeshEffect(this.renderer.resourceMeshes.get(this.connectionSource), 'default');
+          }
           this.connectionMode = !this.connectionMode;
           this.connectionSource = null;
           const btn = document.getElementById('btn-connect');
@@ -661,6 +664,9 @@
       bindKeyboard() {
         document.addEventListener('keydown', (e) => {
           if (e.key === 'Escape') {
+            if (this.connectionSource) {
+              this.renderer._applyMeshEffect(this.renderer.resourceMeshes.get(this.connectionSource), 'default');
+            }
             this.connectionMode = false;
             this.connectionSource = null;
             document.getElementById('btn-connect').classList.remove('bg-sky-500/20', 'border-sky-400/40', 'text-sky-400');
@@ -690,6 +696,12 @@
         });
       }
 
+      _esc(str) {
+        const d = document.createElement('div');
+        d.textContent = str ?? '';
+        return d.innerHTML;
+      }
+
       showProps(uid) {
         const resource = this.engine.cluster.resources.get(uid);
         if (!resource) return;
@@ -704,29 +716,35 @@
           <div class="space-y-3">
             <div>
               <label class="block text-white/40 mb-1">Kind</label>
-              <div class="px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white/70">${resource.kind}</div>
+              <div class="px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white/70">${this._esc(resource.kind)}</div>
             </div>
             <div>
               <label class="block text-white/40 mb-1">Name</label>
-              <input id="prop-name" type="text" value="${resource.metadata.name}" class="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white/90 outline-none focus:border-sky-500/40 transition-colors" />
+              <input id="prop-name" type="text" class="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white/90 outline-none focus:border-sky-500/40 transition-colors" />
             </div>
             <div>
               <label class="block text-white/40 mb-1">Namespace</label>
-              <input id="prop-namespace" type="text" value="${resource.metadata.namespace}" class="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white/90 outline-none focus:border-sky-500/40 transition-colors" />
+              <input id="prop-namespace" type="text" class="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white/90 outline-none focus:border-sky-500/40 transition-colors" />
             </div>
             <div>
               <label class="block text-white/40 mb-1">Labels <span class="text-white/20">(key=value per line)</span></label>
-              <textarea id="prop-labels" rows="3" class="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white/90 outline-none focus:border-sky-500/40 transition-colors font-mono text-[11px] resize-none">${labelStr}</textarea>
+              <textarea id="prop-labels" rows="3" class="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white/90 outline-none focus:border-sky-500/40 transition-colors font-mono text-[11px] resize-none"></textarea>
             </div>
             ${resource.spec?.replicas !== undefined ? `
             <div>
               <label class="block text-white/40 mb-1">Replicas</label>
-              <input id="prop-replicas" type="number" min="0" max="100" value="${resource.spec.replicas}" class="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white/90 outline-none focus:border-sky-500/40 transition-colors" />
+              <input id="prop-replicas" type="number" min="0" max="100" class="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white/90 outline-none focus:border-sky-500/40 transition-colors" />
             </div>` : ''}
             <button id="prop-apply" class="w-full px-3 py-2 text-xs font-medium text-white bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/30 rounded-lg transition-all">Apply Changes</button>
             <button id="prop-delete" class="w-full px-3 py-2 text-xs font-medium text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-all">Delete Resource</button>
           </div>
         `;
+
+        document.getElementById('prop-name').value = resource.metadata.name;
+        document.getElementById('prop-namespace').value = resource.metadata.namespace;
+        document.getElementById('prop-labels').value = labelStr;
+        const repEl = document.getElementById('prop-replicas');
+        if (repEl) repEl.value = resource.spec.replicas;
 
         document.getElementById('prop-apply').addEventListener('click', () => {
           const newName = document.getElementById('prop-name').value.trim();
@@ -751,7 +769,8 @@
 
           const replicasInput = document.getElementById('prop-replicas');
           if (replicasInput) {
-            updates.spec = { replicas: parseInt(replicasInput.value, 10) || 1 };
+            const parsed = parseInt(replicasInput.value, 10);
+            updates.spec = { replicas: Number.isNaN(parsed) ? 1 : parsed };
           }
 
           this.engine.cluster.update(uid, updates);
@@ -836,9 +855,14 @@
             result += `${pad}${key}:\n`;
             result += this.toYAML(value, indent + 2);
           } else {
-            const v = typeof value === 'string' && (value.includes(':') || value.includes('#') || value.includes('{'))
-              ? `"${value}"`
-              : value;
+            let v = value;
+            if (typeof value === 'string') {
+              const needsQuote = /[:#{}&*!|>'"%@`\[\],]/.test(value)
+                || /^(true|false|yes|no|null|~)$/i.test(value)
+                || /^\d+(\.\d+)?$/.test(value)
+                || value === '' || value !== value.trim();
+              v = needsQuote ? `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` : value;
+            }
             result += `${pad}${key}: ${v}\n`;
           }
         }
@@ -860,8 +884,13 @@
       }
 
       shareLink() {
+        const resources = this.engine.cluster.getAllResources();
+        const uidToIdx = new Map();
+        resources.forEach((r, i) => uidToIdx.set(r.uid, i));
+
         const state = {
-          resources: this.engine.cluster.getAllResources().map(r => ({
+          resources: resources.map((r, i) => ({
+            idx: i,
             kind: r.kind,
             name: r.metadata?.name || r.name,
             namespace: r.metadata?.namespace || 'default',
@@ -869,12 +898,15 @@
             spec: r.spec || {},
             pos: this.placedPositions.get(r.uid) || { x: 0, z: 0 },
           })),
-          connections: this.customConnections,
+          connections: this.customConnections.map(c => ({
+            from: uidToIdx.get(c.from) ?? -1,
+            to: uidToIdx.get(c.to) ?? -1,
+          })).filter(c => c.from >= 0 && c.to >= 0),
         };
 
         try {
           const json = JSON.stringify(state);
-          const encoded = btoa(unescape(encodeURIComponent(json)));
+          const encoded = btoa(new TextEncoder().encode(json).reduce((s, b) => s + String.fromCharCode(b), ''));
           const url = `${window.location.origin}/draw#${encoded}`;
           navigator.clipboard.writeText(url).then(() => {
             const btn = document.getElementById('btn-share');
@@ -891,12 +923,15 @@
         const hash = window.location.hash.slice(1);
         if (!hash) return;
         try {
-          const json = decodeURIComponent(escape(atob(hash)));
+          const bytes = Uint8Array.from(atob(hash), c => c.charCodeAt(0));
+          const json = new TextDecoder().decode(bytes);
           const state = JSON.parse(json);
+          const idxToUid = new Map();
           for (const r of state.resources || []) {
             if (!VALID_KINDS.has(r.kind)) continue;
             this.resourceCounter[r.kind] = (this.resourceCounter[r.kind] || 0) + 1;
             const uid = `draw-${r.kind.toLowerCase()}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+            idxToUid.set(r.idx, uid);
             this.placedPositions.set(uid, r.pos || { x: 0, z: 0 });
             this.engine.cluster.addResource({
               kind: r.kind,
@@ -912,7 +947,9 @@
               status: { phase: r.kind === 'Node' ? 'Ready' : 'Running' },
             });
           }
-          this.customConnections = state.connections || [];
+          this.customConnections = (state.connections || [])
+            .map(c => ({ from: idxToUid.get(c.from), to: idxToUid.get(c.to) }))
+            .filter(c => c.from && c.to);
           setTimeout(() => this.syncConnections(), 500);
         } catch (e) {
           console.warn('Failed to load from URL:', e);
