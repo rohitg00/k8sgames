@@ -41,7 +41,7 @@ const KIND_ALIASES = {
   limitrange: 'LimitRange', limitranges: 'LimitRange'
 };
 
-const COMMANDS = ['get', 'describe', 'logs', 'scale', 'delete', 'apply', 'create', 'rollout', 'drain', 'cordon', 'uncordon', 'top', 'exec', 'label', 'run'];
+const COMMANDS = ['get', 'describe', 'logs', 'scale', 'delete', 'apply', 'create', 'rollout', 'drain', 'cordon', 'uncordon', 'top', 'exec', 'label', 'run', 'explain'];
 
 export class CommandBar {
   constructor() {
@@ -265,6 +265,7 @@ export class CommandBar {
       case 'uncordon': return this._cmdCordon(args, cluster, engine, false);
       case 'top': return this._cmdTop(args, cluster);
       case 'exec': return this._cmdExec(args, cluster);
+      case 'explain': return this._cmdExplain(args);
       default: return { error: true, message: `error: unknown command "${cmd}"\nKnown commands: ${COMMANDS.join(', ')}` };
     }
   }
@@ -698,6 +699,344 @@ export class CommandBar {
     const cmdParts = args.slice(args.indexOf('--') + 1);
     const command = cmdParts.length > 0 && cmdParts[0] !== name ? cmdParts.join(' ') : '/bin/sh';
     return { error: false, message: `Defaulting container to "${pod.spec?.containers?.[0]?.name || 'main'}"\n(simulated) exec into ${name}: ${command}` };
+  }
+
+  _cmdExplain(args) {
+    if (args.length === 0) return { error: true, message: 'error: You must specify a resource type.\nUsage: kubectl explain <resource>[.field]' };
+
+    const input = args[0].toLowerCase();
+    const parts = input.split('.');
+
+    const EXPLAIN_DATA = {
+      pod: {
+        kind: 'Pod',
+        version: 'v1',
+        description: 'Pod is a collection of containers that can run on a host. This resource is\ncreated by clients and scheduled onto hosts.',
+        fields: {
+          'spec': 'PodSpec - Specification of the desired behavior of the pod.',
+          'spec.containers': 'Container[] - List of containers belonging to the pod.',
+          'spec.containers.image': 'string - Docker image name.',
+          'spec.containers.name': 'string - Name of the container.',
+          'spec.containers.ports': 'ContainerPort[] - List of ports to expose from the container.',
+          'spec.containers.resources': 'ResourceRequirements - Compute resources required by this container.',
+          'spec.containers.resources.requests': 'map[string]Quantity - Minimum resources required.',
+          'spec.containers.resources.limits': 'map[string]Quantity - Maximum resources allowed.',
+          'spec.containers.livenessProbe': 'Probe - Periodic probe of container liveness.',
+          'spec.containers.readinessProbe': 'Probe - Periodic probe of container service readiness.',
+          'spec.nodeName': 'string - NodeName requests scheduling on a specific node.',
+          'spec.nodeSelector': 'map[string]string - Selector for node scheduling.',
+          'spec.tolerations': 'Toleration[] - Pod tolerations for node taints.',
+          'spec.restartPolicy': 'string - Restart policy: Always, OnFailure, Never. Default: Always.',
+          'spec.serviceAccountName': 'string - Name of the ServiceAccount to use.',
+          'spec.volumes': 'Volume[] - List of volumes that can be mounted by containers.',
+          'status': 'PodStatus - Most recently observed status of the pod.',
+          'status.phase': 'string - Current phase: Pending, Running, Succeeded, Failed, Unknown.',
+          'status.conditions': 'PodCondition[] - Current service state of pod.',
+          'status.podIP': 'string - IP address allocated to the pod.',
+          'metadata': 'ObjectMeta - Standard object metadata.',
+          'metadata.name': 'string - Name must be unique within a namespace.',
+          'metadata.namespace': 'string - Namespace of the object. Default: "default".',
+          'metadata.labels': 'map[string]string - Map of string keys and values for organization.',
+          'metadata.annotations': 'map[string]string - Unstructured key-value data.',
+        }
+      },
+      deployment: {
+        kind: 'Deployment',
+        version: 'apps/v1',
+        description: 'Deployment enables declarative updates for Pods and ReplicaSets.',
+        fields: {
+          'spec': 'DeploymentSpec - Specification of the desired behavior.',
+          'spec.replicas': 'integer - Number of desired pods. Default: 1.',
+          'spec.selector': 'LabelSelector - Label selector for pods managed by this deployment.',
+          'spec.strategy': 'DeploymentStrategy - The deployment strategy to replace existing pods.',
+          'spec.strategy.type': 'string - Type of strategy: RollingUpdate or Recreate.',
+          'spec.strategy.rollingUpdate': 'RollingUpdateDeployment - Config for RollingUpdate.',
+          'spec.strategy.rollingUpdate.maxSurge': 'IntOrString - Max pods above desired count during update.',
+          'spec.strategy.rollingUpdate.maxUnavailable': 'IntOrString - Max unavailable pods during update.',
+          'spec.template': 'PodTemplateSpec - Template describes pods that will be created.',
+          'spec.revisionHistoryLimit': 'integer - Number of old ReplicaSets to retain. Default: 10.',
+          'status': 'DeploymentStatus - Most recently observed status.',
+          'status.replicas': 'integer - Total number of non-terminated pods.',
+          'status.readyReplicas': 'integer - Number of ready pods.',
+          'status.availableReplicas': 'integer - Number of available pods.',
+        }
+      },
+      service: {
+        kind: 'Service',
+        version: 'v1',
+        description: 'Service is a named abstraction of software service consisting of local port\nthat the proxy listens on, and the selector that determines which pods will\nanswer requests sent through the proxy.',
+        fields: {
+          'spec': 'ServiceSpec - Specification of the desired behavior.',
+          'spec.type': 'string - Type: ClusterIP (default), NodePort, LoadBalancer, ExternalName.',
+          'spec.selector': 'map[string]string - Route traffic to pods matching these labels.',
+          'spec.ports': 'ServicePort[] - List of ports exposed by this service.',
+          'spec.ports.port': 'integer - Port that will be exposed by this service.',
+          'spec.ports.targetPort': 'IntOrString - Port to access on the pods targeted by the service.',
+          'spec.ports.protocol': 'string - Protocol: TCP (default), UDP, SCTP.',
+          'spec.clusterIP': 'string - clusterIP is the IP address of the service. "None" = headless.',
+        }
+      },
+      node: {
+        kind: 'Node',
+        version: 'v1',
+        description: 'Node is a worker machine in Kubernetes. Each node is managed by the control\nplane and contains the services necessary to run Pods.',
+        fields: {
+          'spec': 'NodeSpec - Specification of the node.',
+          'spec.taints': 'Taint[] - Taints applied to the node for scheduling.',
+          'spec.unschedulable': 'boolean - Marks node as unschedulable (cordon).',
+          'status': 'NodeStatus - Most recently observed status.',
+          'status.conditions': 'NodeCondition[] - Current condition observations. Key: Ready.',
+          'status.capacity': 'map[string]Quantity - Total resources (cpu, memory, pods).',
+          'status.allocatable': 'map[string]Quantity - Resources available for scheduling.',
+          'status.addresses': 'NodeAddress[] - Addresses reachable to the node.',
+        }
+      },
+      namespace: {
+        kind: 'Namespace',
+        version: 'v1',
+        description: 'Namespace provides a scope for Names. Use of multiple namespaces is optional.',
+        fields: {
+          'status': 'NamespaceStatus - Status of the namespace.',
+          'status.phase': 'string - Phase: Active or Terminating.',
+        }
+      },
+      configmap: {
+        kind: 'ConfigMap',
+        version: 'v1',
+        description: 'ConfigMap holds non-confidential configuration data as key-value pairs.\nPods can consume ConfigMaps as environment variables, command-line arguments,\nor as configuration files in a volume.',
+        fields: {
+          'data': 'map[string]string - Key-value pairs of configuration data.',
+          'binaryData': 'map[string][]byte - Binary data as base64-encoded strings.',
+          'immutable': 'boolean - If true, disables data updates.',
+        }
+      },
+      secret: {
+        kind: 'Secret',
+        version: 'v1',
+        description: 'Secret holds sensitive data such as passwords, OAuth tokens, and ssh keys.\nValues are base64 encoded. Use Secrets instead of ConfigMaps for sensitive data.',
+        fields: {
+          'type': 'string - Type: Opaque (default), kubernetes.io/tls, kubernetes.io/dockerconfigjson.',
+          'data': 'map[string][]byte - Key-value pairs. Values must be base64 encoded.',
+          'stringData': 'map[string]string - Write-only convenience field (auto-encoded).',
+          'immutable': 'boolean - If true, disables data updates.',
+        }
+      },
+      networkpolicy: {
+        kind: 'NetworkPolicy',
+        version: 'networking.k8s.io/v1',
+        description: 'NetworkPolicy describes what network traffic is allowed for a set of Pods.\nBy default all traffic is allowed. Creating a NetworkPolicy that selects\na Pod will deny all traffic not explicitly allowed.',
+        fields: {
+          'spec': 'NetworkPolicySpec - Specification of desired network restrictions.',
+          'spec.podSelector': 'LabelSelector - Selects pods this policy applies to.',
+          'spec.policyTypes': 'string[] - Types of rules: Ingress, Egress, or both.',
+          'spec.ingress': 'NetworkPolicyIngressRule[] - Allowed ingress traffic rules.',
+          'spec.egress': 'NetworkPolicyEgressRule[] - Allowed egress traffic rules.',
+        }
+      },
+      hpa: {
+        kind: 'HorizontalPodAutoscaler',
+        version: 'autoscaling/v2',
+        description: 'HorizontalPodAutoscaler automatically scales the number of pod replicas\nbased on observed CPU utilization or custom metrics.',
+        fields: {
+          'spec': 'HorizontalPodAutoscalerSpec - Behavior of the autoscaler.',
+          'spec.scaleTargetRef': 'CrossVersionObjectReference - Target resource to scale.',
+          'spec.minReplicas': 'integer - Lower limit for pod count. Default: 1.',
+          'spec.maxReplicas': 'integer - Upper limit for pod count. Required.',
+          'spec.metrics': 'MetricSpec[] - Metrics to use for scaling decisions.',
+          'spec.behavior': 'HorizontalPodAutoscalerBehavior - Scaling policies.',
+        }
+      },
+      statefulset: {
+        kind: 'StatefulSet',
+        version: 'apps/v1',
+        description: 'StatefulSet represents a set of pods with consistent identities. Identities\nare defined as: stable network identity (pod-0, pod-1) and stable storage.',
+        fields: {
+          'spec': 'StatefulSetSpec - Specification of the desired behavior.',
+          'spec.replicas': 'integer - Desired number of pods.',
+          'spec.serviceName': 'string - Required. Name of governing headless Service.',
+          'spec.template': 'PodTemplateSpec - Template for pods.',
+          'spec.volumeClaimTemplates': 'PersistentVolumeClaim[] - PVCs for each pod.',
+          'spec.podManagementPolicy': 'string - OrderedReady (default) or Parallel.',
+        }
+      },
+      daemonset: {
+        kind: 'DaemonSet',
+        version: 'apps/v1',
+        description: 'DaemonSet ensures that all (or some) Nodes run a copy of a Pod.\nAs nodes are added to the cluster, Pods are added. Common uses:\nlog collection, node monitoring, cluster storage.',
+        fields: {
+          'spec': 'DaemonSetSpec - Specification of the desired behavior.',
+          'spec.selector': 'LabelSelector - Label selector for pods.',
+          'spec.template': 'PodTemplateSpec - Template for pods.',
+          'spec.updateStrategy': 'DaemonSetUpdateStrategy - Strategy for replacing pods.',
+        }
+      },
+      job: {
+        kind: 'Job',
+        version: 'batch/v1',
+        description: 'Job creates one or more Pods and ensures that a specified number of them\nsuccessfully terminate. As pods complete, the Job tracks completions.',
+        fields: {
+          'spec': 'JobSpec - Specification of the desired behavior.',
+          'spec.completions': 'integer - Number of completions needed. Default: 1.',
+          'spec.parallelism': 'integer - Max pods running in parallel. Default: 1.',
+          'spec.backoffLimit': 'integer - Number of retries before marking failed. Default: 6.',
+          'spec.activeDeadlineSeconds': 'integer - Max seconds for the Job to be active.',
+          'spec.template': 'PodTemplateSpec - Template for pods.',
+        }
+      },
+      cronjob: {
+        kind: 'CronJob',
+        version: 'batch/v1',
+        description: 'CronJob manages time-based Jobs. Creates Job objects at the scheduled time.',
+        fields: {
+          'spec': 'CronJobSpec - Specification of the desired behavior.',
+          'spec.schedule': 'string - Cron format schedule: "*/5 * * * *".',
+          'spec.jobTemplate': 'JobTemplateSpec - Template for Jobs to be created.',
+          'spec.successfulJobsHistoryLimit': 'integer - Keep N successful jobs. Default: 3.',
+          'spec.failedJobsHistoryLimit': 'integer - Keep N failed jobs. Default: 1.',
+          'spec.concurrencyPolicy': 'string - Allow, Forbid, or Replace.',
+        }
+      },
+      ingress: {
+        kind: 'Ingress',
+        version: 'networking.k8s.io/v1',
+        description: 'Ingress is a collection of rules that allow inbound connections to reach\ncluster Services. Provides load balancing, SSL termination, and HTTP routing.',
+        fields: {
+          'spec': 'IngressSpec - Specification of the desired behavior.',
+          'spec.rules': 'IngressRule[] - Host and path-based routing rules.',
+          'spec.rules.host': 'string - Hostname to match (e.g., "app.example.com").',
+          'spec.rules.http.paths': 'HTTPIngressPath[] - Path-based routing.',
+          'spec.tls': 'IngressTLS[] - TLS configuration.',
+          'spec.tls.secretName': 'string - Name of Secret with TLS cert and key.',
+        }
+      },
+      pvc: {
+        kind: 'PersistentVolumeClaim',
+        version: 'v1',
+        description: 'PersistentVolumeClaim is a user request for and claim to a persistent volume.',
+        fields: {
+          'spec': 'PersistentVolumeClaimSpec - Specification of the desired behavior.',
+          'spec.accessModes': 'string[] - ReadWriteOnce, ReadOnlyMany, ReadWriteMany.',
+          'spec.resources.requests.storage': 'Quantity - Requested storage size (e.g., "10Gi").',
+          'spec.storageClassName': 'string - Name of StorageClass. Empty = default.',
+        }
+      },
+      role: {
+        kind: 'Role',
+        version: 'rbac.authorization.k8s.io/v1',
+        description: 'Role is a namespaced set of permissions. Use RoleBinding to grant to users.',
+        fields: {
+          'rules': 'PolicyRule[] - List of permissions.',
+          'rules.verbs': 'string[] - Actions: get, list, watch, create, update, delete, patch.',
+          'rules.apiGroups': 'string[] - API groups: "" (core), "apps", "batch", etc.',
+          'rules.resources': 'string[] - Resources: pods, deployments, services, etc.',
+        }
+      },
+      rolebinding: {
+        kind: 'RoleBinding',
+        version: 'rbac.authorization.k8s.io/v1',
+        description: 'RoleBinding grants permissions defined in a Role to a user or ServiceAccount.',
+        fields: {
+          'roleRef': 'RoleRef - Reference to the Role.',
+          'roleRef.kind': 'string - "Role" or "ClusterRole".',
+          'roleRef.name': 'string - Name of the Role to bind.',
+          'subjects': 'Subject[] - Users, groups, or ServiceAccounts.',
+          'subjects.kind': 'string - "User", "Group", or "ServiceAccount".',
+          'subjects.name': 'string - Name of the subject.',
+        }
+      },
+      serviceaccount: {
+        kind: 'ServiceAccount',
+        version: 'v1',
+        description: 'ServiceAccount provides an identity for processes that run in a Pod.\nPods can use ServiceAccount tokens for API authentication.',
+        fields: {
+          'automountServiceAccountToken': 'boolean - Mount API token automatically. Default: true.',
+          'secrets': 'ObjectReference[] - Secrets allowed to be used by pods.',
+        }
+      },
+      pdb: {
+        kind: 'PodDisruptionBudget',
+        version: 'policy/v1',
+        description: 'PodDisruptionBudget limits the number of pods that are down simultaneously\nfrom voluntary disruptions (drain, updates). Protects availability.',
+        fields: {
+          'spec': 'PodDisruptionBudgetSpec - Specification of the budget.',
+          'spec.minAvailable': 'IntOrString - Minimum pods that must be available.',
+          'spec.maxUnavailable': 'IntOrString - Maximum pods that can be unavailable.',
+          'spec.selector': 'LabelSelector - Pods this budget applies to.',
+        }
+      },
+      replicaset: {
+        kind: 'ReplicaSet',
+        version: 'apps/v1',
+        description: 'ReplicaSet ensures that a specified number of pod replicas are running.\nNote: Use Deployments instead of directly managing ReplicaSets.',
+        fields: {
+          'spec': 'ReplicaSetSpec - Specification of the desired behavior.',
+          'spec.replicas': 'integer - Number of desired pods.',
+          'spec.selector': 'LabelSelector - Label selector for pods.',
+          'spec.template': 'PodTemplateSpec - Template for pods.',
+        }
+      },
+    };
+
+    const EXPLAIN_ALIASES = {
+      po: 'pod', pods: 'pod',
+      deploy: 'deployment', deployments: 'deployment',
+      svc: 'service', services: 'service',
+      no: 'node', nodes: 'node',
+      ns: 'namespace', namespaces: 'namespace',
+      cm: 'configmap', configmaps: 'configmap',
+      secrets: 'secret',
+      netpol: 'networkpolicy', networkpolicies: 'networkpolicy',
+      horizontalpodautoscaler: 'hpa', horizontalpodautoscalers: 'hpa',
+      sts: 'statefulset', statefulsets: 'statefulset',
+      ds: 'daemonset', daemonsets: 'daemonset',
+      jobs: 'job',
+      cj: 'cronjob', cronjobs: 'cronjob',
+      ing: 'ingress', ingresses: 'ingress',
+      persistentvolumeclaim: 'pvc', persistentvolumeclaims: 'pvc',
+      roles: 'role',
+      rolebindings: 'rolebinding',
+      sa: 'serviceaccount', serviceaccounts: 'serviceaccount',
+      poddisruptionbudget: 'pdb', poddisruptionbudgets: 'pdb',
+      rs: 'replicaset', replicasets: 'replicaset',
+    };
+
+    const resourceKey = EXPLAIN_ALIASES[parts[0]] || parts[0];
+    const resource = EXPLAIN_DATA[resourceKey];
+
+    if (!resource) {
+      return { error: true, message: `error: the server doesn't have a resource type "${args[0]}"` };
+    }
+
+    if (parts.length === 1 || (parts.length === 2 && parts[1] === '')) {
+      const fieldList = Object.entries(resource.fields)
+        .filter(([k]) => !k.includes('.') || k.split('.').length === 2)
+        .filter(([k]) => k.split('.').length <= 2)
+        .map(([k, v]) => `   ${k.padEnd(30)} ${v}`)
+        .join('\n');
+
+      return {
+        error: false,
+        message: `KIND:     ${resource.kind}\nVERSION:  ${resource.version}\n\nDESCRIPTION:\n  ${resource.description}\n\nFIELDS:\n${fieldList}`
+      };
+    }
+
+    const fieldPath = parts.slice(1).join('.');
+    const fullPath = `${fieldPath}`;
+
+    const exactMatch = resource.fields[fullPath];
+    if (exactMatch) {
+      const children = Object.entries(resource.fields)
+        .filter(([k]) => k.startsWith(fullPath + '.') && k.split('.').length === fullPath.split('.').length + 1)
+        .map(([k, v]) => `   ${k.split('.').pop().padEnd(30)} ${v}`)
+        .join('\n');
+
+      return {
+        error: false,
+        message: `KIND:     ${resource.kind}\nVERSION:  ${resource.version}\nFIELD:    ${fullPath}\n\n${exactMatch}${children ? `\n\nFIELDS:\n${children}` : ''}`
+      };
+    }
+
+    return { error: true, message: `error: field "${fullPath}" does not exist on ${resource.kind}` };
   }
 
   _appendOutput(text, colorClass = 'text-white/70') {

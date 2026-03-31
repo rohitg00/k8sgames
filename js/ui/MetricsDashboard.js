@@ -124,16 +124,32 @@ export class MetricsDashboard {
   }
 
   _onTick(state) {
-    const cpu = state?.metrics?.cpu ?? Math.random() * 60 + 10;
-    const memory = state?.metrics?.memory ?? Math.random() * 50 + 20;
-    const network = state?.metrics?.networkKBps ?? Math.random() * 200;
-    const pods = state?.metrics?.podCount ?? (window.game?.cluster?.getResourcesByKind('Pod')?.length ?? 0);
+    const cluster = window.game?.cluster;
+    const stats = cluster?.getClusterStats?.() || {};
+
+    const nodes = cluster?.getResourcesByKind?.('Node') || [];
+    let totalCpuUsed = 0, totalCpuCap = 0, totalMemUsed = 0, totalMemCap = 0;
+    for (const n of nodes) {
+      const cpuCap = parseInt(n.spec?.cpu || n.status?.capacity?.cpu || '4') * 1000;
+      const memCapStr = n.spec?.memory || n.status?.capacity?.memory || '8Gi';
+      const memCap = parseInt(memCapStr) * (memCapStr.includes('Gi') ? 1024 : 1);
+      totalCpuUsed += n.status?.usage?.cpu ?? n.cpuUsage ?? 0;
+      totalCpuCap += cpuCap;
+      totalMemUsed += n.status?.usage?.memory ?? n.memoryUsage ?? 0;
+      totalMemCap += memCap;
+    }
+
+    const cpu = totalCpuCap > 0 ? (totalCpuUsed / totalCpuCap) * 100 : 0;
+    const memory = totalMemCap > 0 ? (totalMemUsed / totalMemCap) * 100 : 0;
+    const pods = cluster?.getResourcesByKind?.('Pod')?.length ?? 0;
+    const runningPods = cluster?.getResourcesByKind?.('Pod')?.filter(p => p.status?.phase === 'Running')?.length ?? 0;
+    const network = runningPods * (2 + Math.sin(this.data.network.length * 0.1) * 1.5);
 
     if (this.selectedResource) {
       const r = this.selectedResource;
-      this.data.cpu.push(r.metrics?.cpu ?? cpu * (0.5 + Math.random() * 0.5));
-      this.data.memory.push(r.metrics?.memory ?? memory * (0.5 + Math.random() * 0.5));
-      this.data.network.push(r.metrics?.network ?? network * Math.random());
+      this.data.cpu.push(r.cpuUsage ?? r.status?.cpuUsage ?? cpu * (0.3 + Math.random() * 0.4));
+      this.data.memory.push(r.memoryUsage ?? r.status?.memoryUsage ?? memory * (0.3 + Math.random() * 0.4));
+      this.data.network.push(network * (0.1 + Math.random() * 0.3));
       this.data.pods.push(pods);
     } else {
       this.data.cpu.push(cpu);
@@ -145,6 +161,15 @@ export class MetricsDashboard {
     for (const key of Object.keys(this.data)) {
       while (this.data[key].length > WINDOW_SIZE) this.data[key].shift();
     }
+
+    const lastCpu = Math.round(this.data.cpu[this.data.cpu.length - 1] || 0);
+    const lastMem = Math.round(this.data.memory[this.data.memory.length - 1] || 0);
+    const lastNet = Math.round(this.data.network[this.data.network.length - 1] || 0);
+    const el = (id) => document.getElementById(id);
+    if (el('metrics-cpu-val')) el('metrics-cpu-val').textContent = lastCpu + '%';
+    if (el('metrics-mem-val')) el('metrics-mem-val').textContent = lastMem + '%';
+    if (el('metrics-net-val')) el('metrics-net-val').textContent = lastNet + '';
+    if (el('metrics-pods-val')) el('metrics-pods-val').textContent = pods + '';
 
     if (this.visible) this._draw();
   }

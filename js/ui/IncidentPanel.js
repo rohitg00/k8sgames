@@ -1,41 +1,20 @@
+import { INCIDENT_DEFS } from '../data/IncidentDefs.js';
+
 const SEVERITY_CONFIG = {
   critical: { icon: '\u26a0', color: 'red', bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-400' },
   warning: { icon: '\u26a0', color: 'yellow', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', text: 'text-yellow-400' },
   info: { icon: '\u2139', color: 'blue', bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400' },
 };
 
-const INVESTIGATION_STEPS = {
-  PodCrashLoop: [
-    { label: 'Check pod logs', cmd: 'kubectl logs {name} --previous' },
-    { label: 'Describe pod', cmd: 'kubectl describe pod {name}' },
-    { label: 'Check events', cmd: 'kubectl get events --field-selector involvedObject.name={name}' },
-  ],
-  NodeNotReady: [
-    { label: 'Check node status', cmd: 'kubectl describe node {name}' },
-    { label: 'Check kubelet', cmd: 'kubectl get node {name} -o yaml' },
-    { label: 'Check system pods', cmd: 'kubectl get pods -n kube-system -o wide' },
-  ],
-  HighCPU: [
-    { label: 'Check resource usage', cmd: 'kubectl top pods' },
-    { label: 'Check HPA status', cmd: 'kubectl get hpa' },
-    { label: 'Scale deployment', cmd: 'kubectl scale deploy {name} --replicas=3' },
-  ],
-  HighMemory: [
-    { label: 'Check memory usage', cmd: 'kubectl top pods --sort-by=memory' },
-    { label: 'Describe pod limits', cmd: 'kubectl describe pod {name}' },
-    { label: 'Check OOM events', cmd: 'kubectl get events --field-selector reason=OOMKilling' },
-  ],
-  ImagePullBackOff: [
-    { label: 'Check image name', cmd: 'kubectl describe pod {name}' },
-    { label: 'Check registry secrets', cmd: 'kubectl get secrets' },
-    { label: 'Delete and recreate', cmd: 'kubectl delete pod {name}' },
-  ],
-  ServiceDown: [
-    { label: 'Check endpoints', cmd: 'kubectl get endpoints {name}' },
-    { label: 'Check service', cmd: 'kubectl describe svc {name}' },
-    { label: 'Check selector pods', cmd: 'kubectl get pods -l app={name}' },
-  ],
-};
+const INVESTIGATION_STEPS = {};
+for (const def of INCIDENT_DEFS) {
+  if (def.investigationSteps && def.investigationSteps.length > 0) {
+    INVESTIGATION_STEPS[def.name] = def.investigationSteps.map(step => ({
+      label: step.hint,
+      cmd: step.command.replace('<pod>', '{name}').replace('<node>', '{name}').replace('<service>', '{name}').replace('<policy>', '{name}').replace('<ingress>', '{name}').replace('<namespace>', '{name}'),
+    }));
+  }
+}
 
 export class IncidentPanel {
   constructor() {
@@ -57,6 +36,7 @@ export class IncidentPanel {
     document.body.appendChild(this.container);
     this._bindEvents();
     this._startTimers();
+    this._loadInvestigationProgress();
   }
 
   _buildHTML() {
@@ -128,6 +108,7 @@ export class IncidentPanel {
       status: 'active',
       resolvedAt: null,
       expanded: false,
+      completedSteps: new Set(),
     };
     this.incidents.unshift(incident);
     window.game?.engine.emit('incident:count', { count: this._getActiveCount() });
@@ -294,6 +275,7 @@ export class IncidentPanel {
       btn.addEventListener('click', () => {
         const cmd = btn.dataset.cmd;
         window.game?.engine.emit('ui:run-command', { command: cmd });
+        this._onCommandExecuted(cmd);
       });
     });
   }
@@ -351,6 +333,48 @@ export class IncidentPanel {
   toggle() {
     if (this.visible) this.hide();
     else this.show();
+  }
+
+  _onCommandExecuted(cmd) {
+    for (const incident of this.incidents) {
+      if (incident.status !== 'active') continue;
+      const steps = INVESTIGATION_STEPS[incident.type] || [];
+      for (let i = 0; i < steps.length; i++) {
+        const fullCmd = steps[i].cmd.replace('{name}', incident.resource);
+        if (fullCmd === cmd) {
+          if (!incident.completedSteps) incident.completedSteps = new Set();
+          incident.completedSteps.add(i);
+        }
+      }
+    }
+    this._renderList();
+    this._saveInvestigationProgress();
+  }
+
+  _saveInvestigationProgress() {
+    try {
+      const data = this.incidents.map(i => ({
+        id: i.id,
+        completedSteps: Array.from(i.completedSteps || []),
+        status: i.status,
+      }));
+      localStorage.setItem('k8sgames_investigation', JSON.stringify(data));
+    } catch (e) {}
+  }
+
+  _loadInvestigationProgress() {
+    try {
+      const stored = localStorage.getItem('k8sgames_investigation');
+      if (stored) {
+        const data = JSON.parse(stored);
+        for (const saved of data) {
+          const incident = this.incidents.find(i => i.id === saved.id);
+          if (incident && saved.completedSteps) {
+            incident.completedSteps = new Set(saved.completedSteps);
+          }
+        }
+      }
+    } catch (e) {}
   }
 
   destroy() {

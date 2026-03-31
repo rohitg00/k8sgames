@@ -1,3 +1,5 @@
+import { XP_LEVELS } from '../engine/ScoringEngine.js';
+
 export class HUD {
   constructor() {
     this.container = null;
@@ -181,6 +183,7 @@ export class HUD {
     engine.on('incident:resolved', this._boundResolve);
     engine.on('xp:gain', this._boundXP);
     engine.on('resource:selected', this._boundSelect);
+    engine.on('achievement:unlocked', (data) => this._showAchievementToast(data));
   }
 
   _onTick(state) {
@@ -202,12 +205,14 @@ export class HUD {
   }
 
   _onXPGain(data) {
-    this.xp += data.amount || 0;
-    while (this.xp >= this.xpToNextLevel) {
-      this.xp -= this.xpToNextLevel;
-      this.level++;
-      this.xpToNextLevel = Math.floor(this.xpToNextLevel * 1.5);
-      window.game?.engine.emit('level:up', { level: this.level });
+    const scoring = window.game?.scoringEngine;
+    if (scoring) {
+      const info = scoring.getLevelInfo();
+      this.level = info.level;
+      this.xp = info.currentXP;
+      this.xpProgress = info.xpProgress;
+    } else {
+      this.xp += data.amount || 0;
     }
     this._updateXP();
   }
@@ -287,7 +292,7 @@ export class HUD {
 
   _updateXP() {
     this.elements['hud-level'].textContent = `L${this.level}`;
-    const pct = Math.min(100, Math.round((this.xp / this.xpToNextLevel) * 100));
+    const pct = Math.min(100, Math.round((this.xpProgress ?? (this.xp / (this.xpToNextLevel || 100))) * 100));
     this.elements['hud-xp-bar'].style.width = `${pct}%`;
   }
 
@@ -340,6 +345,49 @@ export class HUD {
         el.className = 'px-1.5 py-0.5 text-xs text-white/40 hover:text-white/60 rounded font-mono transition-colors';
       }
     }
+  }
+
+  _showAchievementToast(data) {
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-16 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg border border-amber-500/30 bg-amber-500/10 backdrop-blur-xl shadow-2xl animate-slide-in-right';
+    toast.innerHTML = `
+      <div class="text-2xl">${this._achievementIcon(data.icon)}</div>
+      <div>
+        <div class="text-amber-400 text-xs font-bold uppercase tracking-wider">Achievement Unlocked!</div>
+        <div class="text-white/90 text-sm font-medium">${this._escapeHTML(data.name)}</div>
+        <div class="text-white/40 text-[10px]">${this._escapeHTML(data.description)} &middot; +${data.xpReward} XP</div>
+      </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(100%)';
+      toast.style.transition = 'all 0.5s ease-out';
+      setTimeout(() => toast.remove(), 500);
+    }, 4000);
+  }
+
+  _achievementIcon(icon) {
+    const icons = {
+      seedling: '\ud83c\udf31', rocket: '\ud83d\ude80', shield: '\ud83d\udee1\ufe0f', star: '\u2b50',
+      terminal: '\ud83d\udcbb', folder: '\ud83d\udcc1', link: '\ud83d\udd17', sprout: '\ud83c\udf3f',
+      graduation: '\ud83c\udf93', lightning: '\u26a1', fire: '\ud83d\udd25', trophy: '\ud83c\udfc6',
+      crown: '\ud83d\udc51', sword: '\u2694\ufe0f', moon: '\ud83c\udf19', brain: '\ud83e\udde0',
+      skull: '\ud83d\udc80', monkey: '\ud83d\udc12', coffee: '\u2615', disco: '\ud83c\udf89',
+      gamepad: '\ud83c\udfae', key: '\ud83d\udd11', medal: '\ud83c\udfc5', castle: '\ud83c\udff0',
+      scroll: '\ud83d\udcdc', domino: '\ud83c\udfb2', explosion: '\ud83d\udca5', loop: '\ud83d\udd04',
+      zap: '\u26a1', herd: '\ud83d\udc02', house: '\ud83c\udfe0', crosshair: '\ud83c\udfaf',
+      server: '\ud83d\udda5\ufe0f', firewall: '\ud83e\uddf1', database: '\ud83d\uddc4\ufe0f',
+      book: '\ud83d\udcd6', expand: '\ud83d\udd0d', stars: '\u2728', blueprint: '\ud83d\udcd0',
+      collection: '\ud83d\udce6', check: '\u2705',
+    };
+    return icons[icon] || '\ud83c\udfc6';
+  }
+
+  _escapeHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
   }
 
   destroy() {

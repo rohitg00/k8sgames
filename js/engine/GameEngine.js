@@ -549,6 +549,10 @@ export class GameEngine {
         resource.spec.template.metadata.annotations['kubectl.kubernetes.io/restartedAt'] = new Date().toISOString();
         resource.metadata.generation++;
         this._addNotification('info', `Restarting rollout for ${kind || 'Deployment'} "${name}"`);
+        const failedPods = this.cluster.getByKind('Pod').filter(p => p.status?.phase === 'Failed');
+        if (failedPods.length === 0) {
+          this.eventBus.emit('rollout:zero-downtime', { kind: kind || 'Deployment', name });
+        }
         return { success: true };
       }
       case 'undo': {

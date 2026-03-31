@@ -403,6 +403,14 @@ class IncidentEngine {
       cascadeChildrenRemaining: cascadeChildren.length
     });
 
+    if (incident.cascadeChildren && incident.cascadeChildren.length >= 2) {
+      this.gameEngine.emit('incident:cascading-resolved', { id: incident.id, cascadeCount: incident.cascadeChildren.length });
+    }
+
+    if (incident.name === 'SecretExposed') {
+      this.gameEngine.emit('secret:exposed-fixed', { id: incident.id });
+    }
+
     this.applyResolutionEffects(incident, actionId);
 
     return { xpEarned, combo: this.comboCount, resolutionTime };
