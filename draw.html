@@ -449,11 +449,15 @@
 
         this.resourceCounter[kind] = (this.resourceCounter[kind] || 0) + 1;
         const name = `${kind.toLowerCase()}-${this.resourceCounter[kind]}`;
+        const uid = `draw-${kind.toLowerCase()}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+        this.placedPositions.set(uid, { x: pos.x, z: pos.z });
 
         const resource = this.engine.cluster.addResource({
           kind,
           name,
           metadata: {
+            uid,
             name,
             namespace: 'default',
             labels: { app: name },
@@ -462,10 +466,6 @@
           spec: (DEFAULT_SPECS[kind] || (() => ({})))(name),
           status: { phase: kind === 'Node' ? 'Ready' : 'Running' },
         });
-
-        if (resource) {
-          this.placedPositions.set(resource.uid, { x: pos.x, z: pos.z });
-        }
       }
 
       bindCanvas() {
@@ -506,25 +506,9 @@
           }
         });
 
-        canvas.addEventListener('contextmenu', (e) => {
-          e.preventDefault();
-          const rect = canvas.getBoundingClientRect();
-          const mouse = {
-            x: ((e.clientX - rect.left) / rect.width) * 2 - 1,
-            y: -((e.clientY - rect.top) / rect.height) * 2 + 1,
-          };
-
-          this.renderer.raycaster.setFromCamera(mouse, this.renderer.camera);
-          const intersects = this.renderer.raycaster.intersectObjects(this.renderer.pickableObjects, true);
-          if (intersects.length === 0) return;
-
-          let target = intersects[0].object;
-          while (target.parent && !target.userData.resourceId) {
-            target = target.parent;
-          }
-          if (!target.userData.resourceId) return;
-
-          const uid = target.userData.resourceId;
+        this.engine.eventBus.on('resource:contextmenu', (data) => {
+          const uid = data.uid;
+          if (!uid) return;
           this.engine.cluster.remove(uid);
           this.placedPositions.delete(uid);
           this.customConnections = this.customConnections.filter(c => c.from !== uid && c.to !== uid);
@@ -847,10 +831,13 @@
           for (const r of state.resources || []) {
             if (!VALID_KINDS.has(r.kind)) continue;
             this.resourceCounter[r.kind] = (this.resourceCounter[r.kind] || 0) + 1;
-            const resource = this.engine.cluster.addResource({
+            const uid = `draw-${r.kind.toLowerCase()}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+            this.placedPositions.set(uid, r.pos || { x: 0, z: 0 });
+            this.engine.cluster.addResource({
               kind: r.kind,
               name: r.name,
               metadata: {
+                uid,
                 name: r.name,
                 namespace: r.namespace || 'default',
                 labels: r.labels || {},
@@ -859,9 +846,6 @@
               spec: r.spec || {},
               status: { phase: r.kind === 'Node' ? 'Ready' : 'Running' },
             });
-            if (resource) {
-              this.placedPositions.set(resource.uid, r.pos || { x: 0, z: 0 });
-            }
           }
           this.customConnections = state.connections || [];
           setTimeout(() => this.syncConnections(), 500);
@@ -874,43 +858,68 @@
         const resources = this.engine.cluster.getAllResources();
         if (resources.length === 0) return;
 
-        const groups = {};
+        const tiers = {
+          ingress: [],
+          network: [],
+          workloads: [],
+          storage: [],
+          nodes: [],
+          config: [],
+        };
+
         for (const r of resources) {
-          const cat = this.getCategory(r.kind);
-          if (!groups[cat]) groups[cat] = [];
-          groups[cat].push(r);
+          const tier = this.getTier(r.kind);
+          tiers[tier].push(r);
         }
 
-        const categoryOrder = ['cluster', 'workloads', 'network', 'config', 'storage', 'rbac'];
         const targets = new Map();
-        let col = 0;
+        const SPACING_X = 5;
+        const TIER_GAP_Z = 7;
 
-        for (const cat of categoryOrder) {
-          const items = groups[cat] || [];
+        const tierOrder = ['ingress', 'network', 'workloads', 'storage', 'nodes'];
+        const sideItems = tiers.config;
+
+        let tierZ = 0;
+        for (const tierName of tierOrder) {
+          const items = tiers[tierName];
           if (items.length === 0) continue;
-          let row = 0;
-          for (const r of items) {
-            const x = col * 6 - 12;
-            const z = row * 4 - (items.length * 2);
+          const totalWidth = (items.length - 1) * SPACING_X;
+          const startX = -totalWidth / 2;
+          items.forEach((r, i) => {
+            const x = startX + i * SPACING_X;
+            const z = tierZ;
             this.placedPositions.set(r.uid, { x, z });
             targets.set(r.uid, { x, y: 0, z });
-            row++;
-          }
-          col++;
+          });
+          tierZ += TIER_GAP_Z;
+        }
+
+        if (sideItems.length > 0) {
+          const allX = [...targets.values()].map(t => t.x);
+          const maxX = allX.length > 0 ? Math.max(...allX) : 0;
+          const sideX = maxX + 8;
+          const totalHeight = (sideItems.length - 1) * 4;
+          const startZ = -totalHeight / 2 + (tierZ / 2);
+          sideItems.forEach((r, i) => {
+            const x = sideX;
+            const z = startZ + i * 4;
+            this.placedPositions.set(r.uid, { x, z });
+            targets.set(r.uid, { x, y: 0, z });
+          });
         }
 
         this.renderer.animateToPositions(targets, 600);
         setTimeout(() => this.syncConnections(), 650);
       }
 
-      getCategory(kind) {
+      getTier(kind) {
         const map = {
-          Node: 'cluster', Namespace: 'cluster', ResourceQuota: 'cluster', HorizontalPodAutoscaler: 'cluster',
+          Ingress: 'ingress',
+          Service: 'network', NetworkPolicy: 'network', HorizontalPodAutoscaler: 'network',
           Pod: 'workloads', Deployment: 'workloads', ReplicaSet: 'workloads', StatefulSet: 'workloads', DaemonSet: 'workloads', Job: 'workloads', CronJob: 'workloads',
-          Service: 'network', Ingress: 'network', NetworkPolicy: 'network',
-          ConfigMap: 'config', Secret: 'config',
-          PersistentVolumeClaim: 'storage',
-          Role: 'rbac', RoleBinding: 'rbac', ServiceAccount: 'rbac',
+          PersistentVolumeClaim: 'storage', Namespace: 'storage', ResourceQuota: 'storage',
+          Node: 'nodes',
+          ConfigMap: 'config', Secret: 'config', Role: 'config', RoleBinding: 'config', ServiceAccount: 'config',
         };
         return map[kind] || 'workloads';
       }
