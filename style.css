@@ -249,8 +249,42 @@ html, body {
   height: 24px;
 }
 
+.menu-draw-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 10px;
+  border: 1px solid rgba(50, 108, 229, 0.3);
+  background: rgba(50, 108, 229, 0.08);
+  color: var(--k8s-blue-light);
+  text-decoration: none;
+  transition: all 0.2s;
+  max-width: 480px;
+  width: 100%;
+}
+
+.menu-draw-link:hover {
+  border-color: var(--k8s-blue);
+  background: rgba(50, 108, 229, 0.15);
+  color: #fff;
+}
+
+.menu-draw-link span:first-of-type {
+  font-weight: 600;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.menu-draw-desc {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  font-weight: 400 !important;
+}
+
 .menu-footer {
-  margin-top: 3rem;
+  margin-top: 2rem;
   display: flex;
   gap: 1.5rem;
   align-items: center;
