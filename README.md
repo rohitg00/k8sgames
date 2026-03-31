@@ -2,13 +2,15 @@
 
 Learn Kubernetes by playing. Deploy pods, fix CrashLoopBackOff, type real kubectl commands — all in a 3D sim that runs in your browser.
 
-**[Play Now at k8sgames.com](https://k8sgames.com)**
+**[Play Now at k8sgames.com](https://k8sgames.com)** | **[K8s Draw — 3D Architecture Diagrams](https://k8sgames.com/draw)**
 
 ![K8s Games — 3D Kubernetes cluster simulation in the browser](screenshot.png)
 
 ## Get Started
 
 Visit **[k8sgames.com](https://k8sgames.com)** and pick a mode. No install, no signup, no build step.
+
+Just here to diagram? Go straight to **[k8sgames.com/draw](https://k8sgames.com/draw)** — drag K8s resources onto a 3D canvas, draw connections, export YAML or PNG, and share via URL.
 
 Or run locally:
 
@@ -38,6 +40,21 @@ python3 -m http.server 8080
 | **Chaos** | Endless survival. Incidents escalate until your cluster breaks. How long can you last? |
 | **Sandbox** | Free build. Design any cluster, get scored 0-100 by the Architecture Advisor |
 | **Challenges** | 10 timed scenarios. Deploy apps, fix outages, race the clock |
+
+### K8s Draw (`/draw`)
+
+A 3D Kubernetes architecture whiteboard. Like Excalidraw but for K8s.
+
+- Drag-drop 21 resource types onto a 3D canvas
+- Draw connection lines between resources
+- Double-click to rename any resource
+- Auto-layout organizes by tier (Nodes, Workloads, Networking, Storage, RBAC)
+- Export as YAML (with correct apiVersions) or PNG
+- Share diagrams via URL — one-click copy, open anywhere
+- Edit properties: name, namespace, labels, replicas
+- Right-click to delete, `Del` key for selected
+
+No game logic, no incidents, no scoring — just diagramming.
 
 ## Controls
 
