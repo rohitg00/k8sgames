@@ -972,6 +972,92 @@
           if (kind === 'Service') {
             this._showSelectorPicker(resource);
           }
+          if (kind === 'Ingress') {
+            this._showIngressPathPicker(resource);
+          }
+        });
+      }
+
+      _showIngressPathPicker(ingress) {
+        const services = this.engine.cluster.getByKind('Service');
+        if (services.length === 0) return;
+
+        const existingOverlay = document.getElementById('ingress-path-overlay');
+        if (existingOverlay) existingOverlay.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'ingress-path-overlay';
+        overlay.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm';
+
+        const svcOptions = services.map(s => {
+          const port = s.spec?.ports?.[0]?.port || s.spec?.port || 80;
+          return `<option value="${s.metadata.name}:${port}">${s.metadata.name} (port ${port})</option>`;
+        }).join('');
+
+        overlay.innerHTML = `
+          <div class="w-80 rounded-xl bg-gray-900/95 border border-white/10 shadow-2xl p-4">
+            <div class="text-xs text-white/40 font-medium uppercase tracking-wider mb-1">Ingress Path Routing</div>
+            <div class="text-[10px] text-white/30 mb-3">Define paths and their backend Services</div>
+            <div id="ingress-path-rows" class="space-y-2">
+              <div class="ingress-path-row flex items-center gap-2">
+                <input type="text" placeholder="/api" value="/api" class="ingress-path-input w-20 px-2 py-1.5 text-xs text-white bg-black/40 border border-white/15 rounded font-mono outline-none focus:border-sky-500/50" />
+                <span class="text-white/20 text-xs">\u2192</span>
+                <select class="ingress-path-svc flex-1 px-2 py-1.5 text-xs text-white bg-black/40 border border-white/15 rounded outline-none focus:border-sky-500/50">${svcOptions}</select>
+              </div>
+              <div class="ingress-path-row flex items-center gap-2">
+                <input type="text" placeholder="/web" value="/web" class="ingress-path-input w-20 px-2 py-1.5 text-xs text-white bg-black/40 border border-white/15 rounded font-mono outline-none focus:border-sky-500/50" />
+                <span class="text-white/20 text-xs">\u2192</span>
+                <select class="ingress-path-svc flex-1 px-2 py-1.5 text-xs text-white bg-black/40 border border-white/15 rounded outline-none focus:border-sky-500/50">${svcOptions}</select>
+              </div>
+            </div>
+            <button id="ingress-add-path" class="mt-2 text-[10px] text-sky-400/60 hover:text-sky-400 transition-colors">+ Add path</button>
+            <div class="flex gap-2 mt-3">
+              <button id="ingress-path-ok" class="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-sky-600 hover:bg-sky-500 rounded-lg transition-colors">Apply Routes</button>
+              <button id="ingress-path-skip" class="px-3 py-1.5 text-xs font-medium text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors">Skip</button>
+            </div>
+            <div class="text-[10px] text-white/30 mt-2 text-center">Level 10: define /api and /web paths to pass the objective</div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+
+        const close = () => overlay.remove();
+        document.getElementById('ingress-path-skip').addEventListener('click', close);
+
+        document.getElementById('ingress-add-path').addEventListener('click', () => {
+          const rows = document.getElementById('ingress-path-rows');
+          const row = document.createElement('div');
+          row.className = 'ingress-path-row flex items-center gap-2';
+          row.innerHTML = `
+            <input type="text" placeholder="/path" class="ingress-path-input w-20 px-2 py-1.5 text-xs text-white bg-black/40 border border-white/15 rounded font-mono outline-none focus:border-sky-500/50" />
+            <span class="text-white/20 text-xs">\u2192</span>
+            <select class="ingress-path-svc flex-1 px-2 py-1.5 text-xs text-white bg-black/40 border border-white/15 rounded outline-none focus:border-sky-500/50">${svcOptions}</select>
+          `;
+          rows.appendChild(row);
+        });
+
+        document.getElementById('ingress-path-ok').addEventListener('click', () => {
+          const rows = overlay.querySelectorAll('.ingress-path-row');
+          const paths = [];
+          for (const row of rows) {
+            const path = row.querySelector('.ingress-path-input').value.trim();
+            const svcVal = row.querySelector('.ingress-path-svc').value;
+            if (!path) continue;
+            const [svcName, svcPort] = svcVal.split(':');
+            paths.push({
+              path,
+              pathType: 'Prefix',
+              backend: { service: { name: svcName, port: { number: parseInt(svcPort) || 80 } } }
+            });
+          }
+
+          if (paths.length > 0) {
+            ingress.spec.rules = [{
+              host: ingress.metadata.name + '.example.com',
+              http: { paths }
+            }];
+            ingress.recordEvent('Normal', 'RulesConfigured', `${paths.length} path rules configured`);
+          }
+          close();
         });
       }
 
