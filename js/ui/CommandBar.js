@@ -542,6 +542,7 @@ export class CommandBar {
       Job: { spec: { completions: 1, parallelism: 1 }, status: { active: 0, succeeded: 0, failed: 0 } },
       DaemonSet: { spec: {}, status: {} },
       StatefulSet: { spec: { replicas: 1 }, status: {} },
+      Ingress: { spec: { rules: [{ host: `${name}.example.com`, http: { paths: [{ path: '/', pathType: 'Prefix', backend: { service: { name: name, port: { number: 80 } } } }] } }] }, status: {} },
       NetworkPolicy: { spec: { podSelector: {}, policyTypes: ['Ingress'] }, status: {} },
       Role: { spec: { rules: [] }, status: {} },
       ClusterRole: { spec: { rules: [] }, status: {} },

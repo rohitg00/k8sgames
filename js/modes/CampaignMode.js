@@ -292,7 +292,12 @@ class CampaignMode {
         }
         case 'route': {
           const ingresses = state.getResourcesByKind('Ingress') || [];
-          const paths = ingresses.flatMap((i) => i.spec?.rules?.flatMap((r) => r.paths?.map((p) => p.path)) || []);
+          const paths = ingresses.flatMap((i) =>
+            (i.spec?.rules || []).flatMap((r) => {
+              const httpPaths = r.http?.paths || r.paths || [];
+              return httpPaths.map((p) => p.path);
+            })
+          );
           const matched = obj.paths.filter((p) => paths.includes(p));
           obj.current = matched.length;
           obj.target = obj.paths.length;
