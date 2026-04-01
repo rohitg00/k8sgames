@@ -551,24 +551,15 @@
             if (newName && newName !== resource.metadata.name) {
               resource.metadata.name = newName;
               resource.name = newName;
-              const group = this.renderer.resourceMeshes.get(uid);
-              if (group) {
-                const oldLabel = group.children.find(c => c.userData?.isLabel);
-                if (oldLabel) {
-                  oldLabel.material.map.dispose();
-                  oldLabel.material.dispose();
-                  group.remove(oldLabel);
-                }
-                const pos = this.placedPositions.get(uid) || { x: 0, z: 0 };
-                this.renderer.removeResource(uid);
-                const renderable = {
-                  id: uid, type: resource.kind, name: newName,
-                  namespace: resource.metadata.namespace || 'default',
-                  status: resource.status?.phase || 'Running',
-                  x: pos.x, y: 0, z: pos.z,
-                };
-                this.renderer.addResource(renderable);
-              }
+              const pos = this.placedPositions.get(uid) || { x: 0, z: 0 };
+              this.renderer.removeResource(uid);
+              this.renderer.addResource({
+                id: uid, type: resource.kind, name: newName,
+                namespace: resource.metadata.namespace || 'default',
+                status: 'Running',
+                x: pos.x, y: 0, z: pos.z,
+              });
+              this.syncConnections();
             }
             input.remove();
           };
@@ -756,16 +747,7 @@
             if (k) newLabels[k.trim()] = (v.join('=') || '').trim();
           }
 
-          const updates = {
-            metadata: { labels: newLabels },
-          };
-
-          if (newName && newName !== resource.metadata.name) {
-            resource.metadata.name = newName;
-          }
-          if (newNs && newNs !== resource.metadata.namespace) {
-            resource.metadata.namespace = newNs;
-          }
+          const updates = { metadata: { labels: newLabels } };
 
           const replicasInput = document.getElementById('prop-replicas');
           if (replicasInput) {
@@ -774,6 +756,31 @@
           }
 
           this.engine.cluster.update(uid, updates);
+
+          const nameChanged = newName && newName !== resource.metadata.name;
+          const nsChanged = newNs && newNs !== resource.metadata.namespace;
+
+          if (nameChanged) {
+            resource.metadata.name = newName;
+            resource.name = newName;
+          }
+          if (nsChanged) {
+            resource.metadata.namespace = newNs;
+          }
+
+          if (nameChanged || nsChanged) {
+            const pos = this.placedPositions.get(uid) || { x: 0, z: 0 };
+            this.renderer.removeResource(uid);
+            this.renderer.addResource({
+              id: uid,
+              type: resource.kind,
+              name: resource.metadata.name,
+              namespace: resource.metadata.namespace,
+              status: 'Running',
+              x: pos.x, y: 0, z: pos.z,
+            });
+            this.syncConnections();
+          }
         });
 
         document.getElementById('prop-delete').addEventListener('click', () => {
