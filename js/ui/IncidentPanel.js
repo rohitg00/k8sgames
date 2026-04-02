@@ -369,7 +369,8 @@ export class IncidentPanel {
       steps.forEach((step, idx) => {
         if (incident.completedSteps.has(idx)) return;
         const expanded = step.cmd.replace('{name}', incident.resource);
-        if (this._fuzzyMatchCommand(raw, expanded)) {
+        const stepWithoutKubectl = expanded.replace(/^kubectl\s+/, '');
+        if (this._fuzzyMatchCommand(raw, stepWithoutKubectl)) {
           incident.completedSteps.add(idx);
           window.game?.engine.emit('xp:gain', { amount: 10 });
         }
@@ -384,10 +385,17 @@ export class IncidentPanel {
     const u = normalize(userCmd);
     const s = normalize(stepCmd);
     if (u === s) return true;
+    if (u.startsWith(s) || s.startsWith(u)) return true;
     const uParts = u.split(' ');
     const sParts = s.split(' ');
     if (uParts.length < 2 || sParts.length < 2) return false;
     if (uParts[0] !== sParts[0]) return false;
+    if (uParts.length >= 2 && sParts.length >= 2 && uParts[1] === sParts[1]) {
+      if (uParts.length >= 3 && sParts.length >= 3) {
+        if (uParts[2].startsWith(sParts[2]) || sParts[2].startsWith(uParts[2])) return true;
+      }
+      if (uParts.length === 2 || sParts.length === 2) return true;
+    }
     if (sParts.length >= 3) {
       const uPrefix = uParts.slice(0, sParts.length - 1).join(' ');
       const sPrefix = sParts.slice(0, -1).join(' ');

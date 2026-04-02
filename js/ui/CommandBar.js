@@ -321,12 +321,36 @@ export class CommandBar {
     const kind = KIND_ALIASES[args[0]?.toLowerCase()];
     if (!kind) return { error: true, message: `error: the server doesn't have a resource type "${args[0]}"` };
 
-    const name = args[1];
     const wide = args.includes('-o') && args.includes('wide');
-    const resources = cluster.getResourcesByKind(kind);
+    const fieldSelectorIdx = args.indexOf('--field-selector');
+    const fieldSelector = fieldSelectorIdx >= 0 ? args[fieldSelectorIdx + 1] : null;
+    const flagArgs = new Set(['--field-selector', fieldSelector, '-o', 'wide', '-A', '--all-namespaces', '-w', '--watch'].filter(Boolean));
+    const name = args.slice(1).find(a => !flagArgs.has(a) && !a.startsWith('--'));
+    let resources = cluster.getResourcesByKind(kind);
+
+    if (fieldSelector) {
+      const match = fieldSelector.match(/involvedObject\.name=(.+)/);
+      if (match) {
+        const targetName = match[1];
+        const allResources = [...cluster.getResourcesByKind('Pod'), ...cluster.getResourcesByKind('Deployment'), ...cluster.getResourcesByKind('Node')];
+        const target = allResources.find(r => r.metadata?.name === targetName || r.metadata?.name?.startsWith(targetName));
+        const lines = [
+          'LAST SEEN   TYPE      REASON              OBJECT                MESSAGE',
+          `2m          Normal    Scheduled           pod/${targetName}     Successfully assigned default/${targetName} to node-1`,
+          `2m          Normal    Pulling             pod/${targetName}     Pulling image "nginx:latest"`,
+          `1m          Normal    Pulled              pod/${targetName}     Successfully pulled image`,
+          `1m          Normal    Created             pod/${targetName}     Created container main`,
+          `30s         Warning   BackOff             pod/${targetName}     Back-off restarting failed container`,
+        ];
+        return { error: false, message: lines.join('\n') };
+      }
+    }
 
     if (name) {
-      const res = resources.find(r => r.metadata?.name === name);
+      let res = resources.find(r => r.metadata?.name === name);
+      if (!res) {
+        res = resources.find(r => r.metadata?.name?.startsWith(name));
+      }
       if (!res) return { error: true, message: `Error from server (NotFound): ${kind.toLowerCase()}s "${name}" not found` };
       return { error: false, message: this._formatResourceRow(res, kind, true) };
     }
@@ -391,7 +415,10 @@ export class CommandBar {
     if (!kind) return { error: true, message: `error: the server doesn't have a resource type "${args[0]}"` };
 
     const resources = cluster.getResourcesByKind(kind);
-    const res = resources.find(r => r.metadata?.name === args[1]);
+    let res = resources.find(r => r.metadata?.name === args[1]);
+    if (!res) {
+      res = resources.find(r => r.metadata?.name?.startsWith(args[1]));
+    }
     if (!res) return { error: true, message: `Error from server (NotFound): ${kind.toLowerCase()}s "${args[1]}" not found` };
 
     if (typeof res.toDescribe === 'function') {
@@ -422,13 +449,31 @@ export class CommandBar {
   _cmdLogs(args, cluster) {
     const nsIdx = args.indexOf('-n');
     const ns = nsIdx >= 0 ? args[nsIdx + 1] : undefined;
-    const name = args.find(a => a !== '-n' && a !== ns);
+    const previous = args.includes('--previous') || args.includes('-p');
+    const flags = new Set(['-n', ns, '--previous', '-p', '-f', '--follow', '--tail'].filter(Boolean));
+    const name = args.find(a => !flags.has(a) && !a.startsWith('--tail='));
     if (!name) return { error: true, message: 'error: You must specify a pod name' };
 
     const pods = cluster.getResourcesByKind('Pod');
-    const pod = pods.find(p => p.metadata?.name === name && (!ns || p.metadata?.namespace === ns));
+    let pod = pods.find(p => p.metadata?.name === name && (!ns || p.metadata?.namespace === ns));
+    if (!pod) {
+      pod = pods.find(p => p.metadata?.name?.startsWith(name) && (!ns || p.metadata?.namespace === ns));
+    }
     if (!pod) return { error: true, message: `Error from server (NotFound): pods "${name}" not found` };
-    if (pod.status?.phase !== 'Running') return { error: true, message: `Error from server: container in pod "${name}" is not running` };
+
+    if (!previous && pod.status?.phase !== 'Running') {
+      return { error: true, message: `Error from server: container in pod "${name}" is not running` };
+    }
+
+    if (previous) {
+      const crashLogs = [
+        `[${new Date().toISOString()}] Starting application...`,
+        `[${new Date().toISOString()}] Error: Cannot connect to database`,
+        `[${new Date().toISOString()}] Fatal: Unhandled exception — shutting down`,
+        `[${new Date().toISOString()}] Exit code: 1`,
+      ];
+      return { error: false, message: crashLogs.join('\n') };
+    }
 
     const sampleLogs = [
       `[${new Date().toISOString()}] Starting application...`,
