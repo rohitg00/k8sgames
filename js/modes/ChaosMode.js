@@ -28,6 +28,10 @@ class ChaosMode {
     this.ticker = null;
     this.pauseStart = 0;
     this.gameOverThreshold = 0;
+    this._boundOnIncidentResolved = (data) => {
+      if (this.state !== CHAOS_STATE.PLAYING) return;
+      this.onIncidentResolved(data);
+    };
     this.resetState();
   }
 
@@ -60,10 +64,7 @@ class ChaosMode {
 
     this.ticker = setInterval(() => this.update(), 1000);
 
-    this.gameEngine.on('incident:resolved', (data) => {
-      if (this.state !== CHAOS_STATE.PLAYING) return;
-      this.onIncidentResolved(data);
-    });
+    this.gameEngine.on('incident:resolved', this._boundOnIncidentResolved);
 
     this.gameEngine.emit('chaos:started', {
       initialCluster: INITIAL_CLUSTER,
@@ -263,12 +264,14 @@ class ChaosMode {
   exit() {
     this.stopTicking();
     this.incidentEngine.stop();
+    this.gameEngine.off('incident:resolved', this._boundOnIncidentResolved);
     this.state = CHAOS_STATE.IDLE;
     this.gameEngine.emit('chaos:exited', {});
   }
 
   destroy() {
     this.stopTicking();
+    this.gameEngine?.off('incident:resolved', this._boundOnIncidentResolved);
     this.gameEngine = null;
     this.incidentEngine = null;
     this.scoringEngine = null;

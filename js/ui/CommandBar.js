@@ -105,6 +105,12 @@ export class CommandBar {
     this.input.addEventListener('keydown', (e) => this._onInputKeydown(e));
     this.input.addEventListener('input', () => this._onInputChange());
 
+    this.suggestionsEl.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-idx]');
+      if (!el) return;
+      this._applySuggestion(this.suggestions[parseInt(el.dataset.idx)]);
+    });
+
     this._boundShowCommandBar = () => this.show();
     const engine = window.game?.engine;
     if (engine) { engine.on('ui:show-command-bar', this._boundShowCommandBar); }
@@ -202,11 +208,6 @@ export class CommandBar {
         `).join('')}
       </div>
     `;
-    this.suggestionsEl.querySelectorAll('[data-idx]').forEach(el => {
-      el.addEventListener('click', () => {
-        this._applySuggestion(this.suggestions[parseInt(el.dataset.idx)]);
-      });
-    });
   }
 
   _applySuggestion(suggestion) {

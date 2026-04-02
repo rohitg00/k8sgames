@@ -95,7 +95,8 @@ export class MetricsDashboard {
       const rect = canvas.getBoundingClientRect();
       canvas.width = rect.width * window.devicePixelRatio;
       canvas.height = rect.height * window.devicePixelRatio;
-      this.contexts[key].scale(window.devicePixelRatio, window.devicePixelRatio);
+      const dpr = window.devicePixelRatio;
+      this.contexts[key].setTransform(dpr, 0, 0, dpr, 0, 0);
     }
   }
 

@@ -49,7 +49,23 @@ function createGlowRing(color, radius) {
     return ring;
 }
 
+const _labelTextureCache = new Map();
+
 function createLabelSprite(text) {
+    const cached = _labelTextureCache.get(text);
+    if (cached) {
+        const spriteMat = new THREE.SpriteMaterial({
+            map: cached,
+            transparent: true,
+            depthTest: false,
+            sizeAttenuation: true
+        });
+        const sprite = new THREE.Sprite(spriteMat);
+        sprite.scale.set(3.5, 0.9, 1);
+        sprite.userData.isLabel = true;
+        return sprite;
+    }
+
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     canvas.width = 512;
@@ -95,6 +111,7 @@ function createLabelSprite(text) {
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.minFilter = THREE.LinearFilter;
+    _labelTextureCache.set(text, texture);
     const spriteMat = new THREE.SpriteMaterial({
         map: texture,
         transparent: true,
