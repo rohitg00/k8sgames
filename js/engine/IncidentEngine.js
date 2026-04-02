@@ -82,6 +82,8 @@ class IncidentEngine {
     this.maxCascadeDepth = 3;
     this.paused = false;
 
+    this.pendingCascadeTimers = [];
+
     this.cascadeRules = new Map([
       ['NodeNotReady', [
         { incident: 'PodEviction', probability: 0.8, delay: 5000, severity: 2 },
@@ -310,7 +312,8 @@ class IncidentEngine {
     for (const rule of rules) {
       if (Math.random() > rule.probability) continue;
 
-      setTimeout(() => {
+      const timer = setTimeout(() => {
+        this.pendingCascadeTimers = this.pendingCascadeTimers.filter(t => t !== timer);
         if (this.paused) return;
         if (parentIncident.state === INCIDENT_STATE.RESOLVED) return;
 
@@ -331,6 +334,7 @@ class IncidentEngine {
           this.checkCascade(child, depth + 1);
         }
       }, rule.delay);
+      this.pendingCascadeTimers.push(timer);
     }
   }
 
@@ -526,6 +530,10 @@ class IncidentEngine {
 
   reset() {
     this.stop();
+    for (const timer of this.pendingCascadeTimers) {
+      clearTimeout(timer);
+    }
+    this.pendingCascadeTimers = [];
     this.activeIncidents.clear();
     this.resolvedIncidents = [];
     this.incidentCounter = 0;

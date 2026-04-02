@@ -435,7 +435,12 @@ class ChallengeMode {
         }
         case 'investigate': {
           const active = this.incidentEngine.getActiveIncidents();
-          const incident = active.find((i) => i.name === obj.incidentType);
+          const resolved = this.incidentEngine.resolvedIncidents || [];
+          const allIncidents = [...active, ...resolved.map(i => ({
+            name: i.name,
+            investigationProgress: i.investigationProgress
+          }))];
+          const incident = allIncidents.find((i) => i.name === obj.incidentType);
           obj.current = incident?.investigationProgress >= 0.5 ? 1 : 0;
           obj.completed = obj.current >= 1;
           break;

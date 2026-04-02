@@ -130,19 +130,7 @@ export class ConnectionLineManager {
             const line = entry.line;
             line.userData.flowOffset += line.userData.flowSpeed * delta;
             const material = line.material;
-            material.dashSize = DASH_SIZE;
-            material.gapSize = GAP_SIZE;
-
-            const distances = line.geometry.attributes.lineDistance;
-            if (distances) {
-                const offset = line.userData.flowOffset;
-                const array = distances.array;
-                const totalDist = array[array.length - 1];
-                for (let i = 0; i < array.length; i++) {
-                    array[i] = ((array[i] / totalDist) * totalDist + offset) % (totalDist + DASH_SIZE + GAP_SIZE);
-                }
-                distances.needsUpdate = true;
-            }
+            material.dashOffset = -line.userData.flowOffset;
         }
     }
 
