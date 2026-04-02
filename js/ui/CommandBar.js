@@ -322,18 +322,28 @@ export class CommandBar {
     if (!kind) return { error: true, message: `error: the server doesn't have a resource type "${args[0]}"` };
 
     const wide = args.includes('-o') && args.includes('wide');
+    const nsIdx = args.indexOf('-n');
+    const ns = nsIdx >= 0 ? args[nsIdx + 1] : undefined;
     const fieldSelectorIdx = args.indexOf('--field-selector');
     const fieldSelector = fieldSelectorIdx >= 0 ? args[fieldSelectorIdx + 1] : null;
-    const flagArgs = new Set(['--field-selector', fieldSelector, '-o', 'wide', '-A', '--all-namespaces', '-w', '--watch'].filter(Boolean));
+    const labelIdx = args.indexOf('-l');
+    const labelSelector = labelIdx >= 0 ? args[labelIdx + 1] : null;
+    const hasJsonpath = args.some(a => a.startsWith('jsonpath=') || a.includes('jsonpath'));
+    const hasYaml = args.includes('-o') && args.includes('yaml');
+    const flagArgs = new Set(['--field-selector', fieldSelector, '-o', 'wide', 'yaml', '-A', '--all-namespaces', '-w', '--watch', '-l', labelSelector, '-n', ns].filter(Boolean));
+    args.forEach(a => { if (a.startsWith('--sort-by') || a.startsWith('jsonpath')) flagArgs.add(a); });
     const name = args.slice(1).find(a => !flagArgs.has(a) && !a.startsWith('--'));
     let resources = cluster.getResourcesByKind(kind);
 
+    if (ns) {
+      resources = resources.filter(r => r.metadata?.namespace === ns || r.namespace === ns);
+    }
+
     if (fieldSelector) {
-      const match = fieldSelector.match(/involvedObject\.name=(.+)/);
-      if (match) {
-        const targetName = match[1];
-        const allResources = [...cluster.getResourcesByKind('Pod'), ...cluster.getResourcesByKind('Deployment'), ...cluster.getResourcesByKind('Node')];
-        const target = allResources.find(r => r.metadata?.name === targetName || r.metadata?.name?.startsWith(targetName));
+      const involvedMatch = fieldSelector.match(/involvedObject\.name=(.+)/);
+      const nodeMatch = fieldSelector.match(/spec\.nodeName=(.+)/);
+      if (involvedMatch) {
+        const targetName = involvedMatch[1];
         const lines = [
           'LAST SEEN   TYPE      REASON              OBJECT                MESSAGE',
           `2m          Normal    Scheduled           pod/${targetName}     Successfully assigned default/${targetName} to node-1`,
@@ -343,6 +353,40 @@ export class CommandBar {
           `30s         Warning   BackOff             pod/${targetName}     Back-off restarting failed container`,
         ];
         return { error: false, message: lines.join('\n') };
+      }
+      if (nodeMatch) {
+        const nodeName = nodeMatch[1];
+        const pods = cluster.getResourcesByKind('Pod').filter(p => p.spec?.nodeName === nodeName);
+        if (pods.length === 0) return { error: false, message: `No resources found on node ${nodeName}.` };
+        const header = this._getHeaderForKind('Pod', wide);
+        const rows = pods.map(r => this._formatResourceRow(r, 'Pod', wide));
+        return { error: false, message: `${header}\n${rows.join('\n')}` };
+      }
+    }
+
+    if (labelSelector) {
+      const [lk, lv] = labelSelector.split('=');
+      if (lk) {
+        resources = resources.filter(r => {
+          const labels = r.metadata?.labels || {};
+          return lv ? labels[lk] === lv : lk in labels;
+        });
+      }
+    }
+
+    if (hasJsonpath && name) {
+      let res = resources.find(r => r.metadata?.name === name);
+      if (!res) res = resources.find(r => r.metadata?.name?.startsWith(name));
+      if (!res) return { error: true, message: `Error from server (NotFound): ${kind.toLowerCase()}s "${name}" not found` };
+      return { error: false, message: JSON.stringify(res.spec || {}, null, 2) };
+    }
+
+    if (hasYaml) {
+      const target = name ? resources.find(r => r.metadata?.name === name || r.metadata?.name?.startsWith(name)) : resources[0];
+      if (!target && name) return { error: true, message: `Error from server (NotFound): ${kind.toLowerCase()}s "${name}" not found` };
+      if (target) {
+        const yaml = [`apiVersion: ${target.apiVersion || 'v1'}`, `kind: ${kind}`, `metadata:`, `  name: ${target.metadata?.name}`, `  namespace: ${target.metadata?.namespace || 'default'}`, `spec:`, `  ${JSON.stringify(target.spec || {})}`];
+        return { error: false, message: yaml.join('\n') };
       }
     }
 
@@ -355,7 +399,7 @@ export class CommandBar {
       return { error: false, message: this._formatResourceRow(res, kind, true) };
     }
 
-    if (resources.length === 0) return { error: false, message: `No resources found in default namespace.` };
+    if (resources.length === 0) return { error: false, message: `No resources found in ${ns || 'default'} namespace.` };
 
     const header = this._getHeaderForKind(kind, wide);
     const rows = resources.map(r => this._formatResourceRow(r, kind, wide));
@@ -768,7 +812,14 @@ export class CommandBar {
       return { error: false, message: `${header}\n${rows.join('\n')}` };
     }
     if (type === 'pods' || type === 'pod') {
-      const pods = cluster.getResourcesByKind('Pod');
+      let pods = cluster.getResourcesByKind('Pod');
+      const podName = args[1];
+      if (podName && !podName.startsWith('--')) {
+        let pod = pods.find(p => p.metadata?.name === podName);
+        if (!pod) pod = pods.find(p => p.metadata?.name?.startsWith(podName));
+        if (!pod) return { error: true, message: `Error from server (NotFound): pods "${podName}" not found` };
+        pods = [pod];
+      }
       if (pods.length === 0) return { error: false, message: 'No resources found.' };
       const header = 'NAME                     CPU(cores)   MEMORY(bytes)';
       const rows = pods.map(p => {
