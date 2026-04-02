@@ -19,10 +19,13 @@ const TRAFFIC_COLORS = {
 const vertexShader = `
     attribute float size;
     attribute float alpha;
+    attribute vec3 color;
     varying float vAlpha;
+    varying vec3 vColor;
 
     void main() {
         vAlpha = alpha;
+        vColor = color;
         vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
         gl_PointSize = size * (200.0 / -mvPosition.z);
         gl_PointSize = max(gl_PointSize, 1.0);
@@ -32,6 +35,7 @@ const vertexShader = `
 
 const fragmentShader = `
     varying float vAlpha;
+    varying vec3 vColor;
 
     void main() {
         vec2 center = gl_PointCoord - vec2(0.5);
@@ -42,7 +46,7 @@ const fragmentShader = `
         float glow = exp(-dist * 4.0) * 0.6;
         float finalAlpha = (intensity + glow) * vAlpha;
 
-        gl_FragColor = vec4(1.0, 1.0, 1.0, finalAlpha);
+        gl_FragColor = vec4(vColor, finalAlpha);
     }
 `;
 

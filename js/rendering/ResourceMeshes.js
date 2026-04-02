@@ -112,6 +112,7 @@ function createLabelSprite(text) {
     const texture = new THREE.CanvasTexture(canvas);
     texture.minFilter = THREE.LinearFilter;
     _labelTextureCache.set(text, texture);
+
     const spriteMat = new THREE.SpriteMaterial({
         map: texture,
         transparent: true,
