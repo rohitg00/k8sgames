@@ -56,29 +56,29 @@
 
   <canvas id="draw-canvas" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;display:block;touch-action:none;"></canvas>
 
-  <div class="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-2 backdrop-blur-xl bg-white/5 border-b border-white/10" style="height:48px;">
-    <div class="flex items-center gap-3">
+  <div id="draw-toolbar" class="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-2 backdrop-blur-xl bg-white/5 border-b border-white/10" style="height:48px;">
+    <div class="flex items-center gap-3 shrink-0">
       <a href="/" class="flex items-center gap-2 text-white/60 hover:text-white/90 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
       </a>
       <div class="h-5 w-px bg-white/10"></div>
       <span class="text-white/90 text-sm font-semibold">K8s Draw</span>
-      <span class="text-white/30 text-xs">3D Architecture Diagram</span>
+      <span class="draw-subtitle text-white/30 text-xs">3D Architecture Diagram</span>
     </div>
-    <div class="flex items-center gap-2">
-      <span id="draw-status" class="text-xs text-sky-400 mr-2"></span>
-      <button id="btn-connect" class="px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all" title="Draw a line between two resources: click source, then click target">
-        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>Draw Line
+    <div class="flex items-center gap-2 overflow-x-auto scrollbar-none">
+      <span id="draw-status" class="text-xs text-sky-400 mr-2 draw-status-text"></span>
+      <button id="btn-connect" class="draw-btn shrink-0 px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all" title="Draw a line between two resources: click source, then click target">
+        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg><span class="draw-btn-label">Draw Line</span>
       </button>
-      <button id="btn-auto-layout" class="px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all">Auto-Layout</button>
-      <div class="h-5 w-px bg-white/10"></div>
-      <button id="btn-export-yaml" class="px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all">YAML</button>
-      <button id="btn-export-png" class="px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all">PNG</button>
-      <button id="btn-share" class="px-3 py-1.5 text-xs text-white/60 hover:text-white bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 rounded-lg transition-all">
-        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>Share
+      <button id="btn-auto-layout" class="draw-btn shrink-0 px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all"><span class="draw-btn-label">Auto-Layout</span><span class="draw-btn-icon-only hidden"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/></svg></span></button>
+      <div class="draw-divider h-5 w-px bg-white/10"></div>
+      <button id="btn-export-yaml" class="draw-btn shrink-0 px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all">YAML</button>
+      <button id="btn-export-png" class="draw-btn shrink-0 px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all">PNG</button>
+      <button id="btn-share" class="draw-btn shrink-0 px-3 py-1.5 text-xs text-white/60 hover:text-white bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 rounded-lg transition-all">
+        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg><span class="draw-btn-label">Share</span>
       </button>
-      <div class="h-5 w-px bg-white/10"></div>
-      <button id="btn-clear" class="px-3 py-1.5 text-xs text-red-400/60 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 rounded-lg transition-all">Clear</button>
+      <div class="draw-divider h-5 w-px bg-white/10"></div>
+      <button id="btn-clear" class="draw-btn shrink-0 px-3 py-1.5 text-xs text-red-400/60 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 rounded-lg transition-all">Clear</button>
     </div>
   </div>
 
@@ -261,7 +261,7 @@
     </div>
   </div>
 
-  <div id="draw-props" class="fixed right-0 top-12 w-72 z-30 backdrop-blur-xl bg-black/70 border-l border-white/10 overflow-y-auto transition-transform duration-300 translate-x-full" style="bottom:0;">
+  <div id="draw-props" class="fixed right-0 top-12 z-30 backdrop-blur-xl bg-black/70 border-l border-white/10 overflow-y-auto transition-transform duration-300 translate-x-full" style="bottom:0;width:18rem;">
     <div class="flex items-center justify-between px-4 py-3 border-b border-white/10">
       <span class="text-sm font-semibold text-white/90">Properties</span>
       <button id="btn-close-props" class="text-white/40 hover:text-white/80 text-xs transition-colors">&#10005;</button>
@@ -271,7 +271,7 @@
     </div>
   </div>
 
-  <div class="fixed bottom-4 left-20 z-30 px-3 py-2 text-[10px] text-white/20 space-y-0.5">
+  <div id="draw-help" class="fixed bottom-4 left-20 z-30 px-3 py-2 text-[10px] text-white/20 space-y-0.5">
     <div>Drag resources from palette to canvas</div>
     <div>Double-click resource to rename</div>
     <div>Click <strong class="text-white/40">Draw Line</strong> then click two resources to link</div>
@@ -279,7 +279,7 @@
     <div><kbd class="px-1 bg-white/5 rounded">Esc</kbd> cancel &middot; <kbd class="px-1 bg-white/5 rounded">Del</kbd> delete selected</div>
   </div>
 
-  <div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 text-[10px] text-white/15">
+  <div id="draw-watermark" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 text-[10px] text-white/15">
     <span>k8sgames.com/draw</span>
   </div>
 
@@ -444,6 +444,27 @@
             this.placeResource(kind, window.innerWidth / 2, window.innerHeight / 2);
           }
         });
+
+        let touchDragKind = null;
+        palette.addEventListener('touchstart', (e) => {
+          const item = e.target.closest('.palette-item');
+          if (!item) return;
+          touchDragKind = item.dataset.resource;
+        }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+          if (!touchDragKind) return;
+          const touch = e.changedTouches[0];
+          if (touch) {
+            const kind = touchDragKind;
+            touchDragKind = null;
+            const el = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (el === canvas || canvas.contains(el)) {
+              this.placeResource(kind, touch.clientX, touch.clientY);
+            }
+          } else {
+            touchDragKind = null;
+          }
+        }, { passive: true });
       }
 
       placeResource(kind, screenX, screenY) {
@@ -792,10 +813,13 @@
         });
 
         panel.classList.remove('translate-x-full');
+        panel.classList.add('translate-x-0');
       }
 
       hideProps() {
-        document.getElementById('draw-props').classList.add('translate-x-full');
+        const panel = document.getElementById('draw-props');
+        panel.classList.add('translate-x-full');
+        panel.classList.remove('translate-x-0');
       }
 
       exportYAML() {
