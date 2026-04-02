@@ -117,8 +117,7 @@ export class ParticleTrafficSystem {
             fragmentShader,
             transparent: true,
             depthWrite: false,
-            blending: THREE.AdditiveBlending,
-            vertexColors: true
+            blending: THREE.AdditiveBlending
         });
     }
 
