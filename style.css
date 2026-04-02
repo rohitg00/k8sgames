@@ -1414,3 +1414,198 @@ html, body {
 .animate-slide-in-right {
   animation: slide-in-right 0.4s ease-out forwards;
 }
+
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { scrollbar-width: none; }
+
+@media (min-width: 1440px) {
+  #draw-toolbar {
+    height: 56px !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+  }
+  #draw-toolbar .draw-btn {
+    padding: 0.5rem 1rem !important;
+    font-size: 0.8rem !important;
+  }
+  #draw-toolbar .draw-btn svg {
+    width: 1.1rem !important;
+    height: 1.1rem !important;
+  }
+  #draw-toolbar span.text-sm {
+    font-size: 1rem !important;
+  }
+  body:has(#draw-canvas) #resource-palette {
+    width: 80px !important;
+    top: 56px !important;
+  }
+  body:has(#draw-canvas) .palette-item {
+    width: 60px !important;
+    height: 60px !important;
+  }
+  body:has(#draw-canvas) .palette-icon svg {
+    width: 26px !important;
+    height: 26px !important;
+  }
+  body:has(#draw-canvas) .palette-label {
+    font-size: 0.6rem !important;
+  }
+  #draw-props {
+    width: 22rem !important;
+    top: 56px !important;
+  }
+  #draw-props .text-sm {
+    font-size: 0.9rem !important;
+  }
+  #draw-props .text-xs {
+    font-size: 0.8rem !important;
+  }
+  #draw-help {
+    font-size: 12px !important;
+    left: 88px !important;
+  }
+}
+
+@media (min-width: 1920px) {
+  #draw-toolbar {
+    height: 60px !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+  }
+  #draw-toolbar .draw-btn {
+    padding: 0.6rem 1.25rem !important;
+    font-size: 0.85rem !important;
+    border-radius: 0.5rem !important;
+  }
+  body:has(#draw-canvas) #resource-palette {
+    width: 90px !important;
+    top: 60px !important;
+    padding: 12px 0 !important;
+    gap: 4px !important;
+  }
+  body:has(#draw-canvas) .palette-item {
+    width: 68px !important;
+    height: 68px !important;
+    border-radius: 14px !important;
+  }
+  body:has(#draw-canvas) .palette-icon svg {
+    width: 30px !important;
+    height: 30px !important;
+  }
+  body:has(#draw-canvas) .palette-label {
+    font-size: 0.65rem !important;
+  }
+  #draw-props {
+    width: 26rem !important;
+    top: 60px !important;
+  }
+  #draw-help {
+    font-size: 13px !important;
+    left: 100px !important;
+    bottom: 1.5rem !important;
+  }
+  #draw-watermark {
+    font-size: 12px !important;
+  }
+}
+
+@media (min-width: 2560px) {
+  body:has(#draw-canvas) #resource-palette {
+    width: 100px !important;
+    gap: 6px !important;
+  }
+  body:has(#draw-canvas) .palette-item {
+    width: 76px !important;
+    height: 76px !important;
+    border-radius: 16px !important;
+  }
+  body:has(#draw-canvas) .palette-icon svg {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  body:has(#draw-canvas) .palette-label {
+    font-size: 0.7rem !important;
+  }
+  #draw-props {
+    width: 30rem !important;
+  }
+  #draw-toolbar .draw-btn {
+    font-size: 0.9rem !important;
+    padding: 0.65rem 1.5rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  #draw-toolbar {
+    height: 40px !important;
+    padding: 0.25rem 0.5rem !important;
+  }
+  #draw-toolbar .draw-btn {
+    padding: 0.35rem 0.5rem !important;
+    font-size: 0.65rem !important;
+  }
+  #draw-toolbar .draw-btn-label {
+    display: none !important;
+  }
+  #draw-toolbar .draw-btn-icon-only {
+    display: inline !important;
+  }
+  .draw-subtitle {
+    display: none !important;
+  }
+  .draw-status-text {
+    display: none !important;
+  }
+  .draw-divider {
+    display: none !important;
+  }
+  body:has(#draw-canvas) #resource-palette {
+    top: 40px !important;
+  }
+  #draw-props {
+    width: 100vw !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    bottom: 0 !important;
+    max-height: 50vh !important;
+    border-left: none !important;
+    border-top: 1px solid rgba(255,255,255,0.1) !important;
+    border-radius: 1rem 1rem 0 0 !important;
+    transform: translateY(100%) !important;
+  }
+  #draw-props.translate-x-0,
+  #draw-props:not(.translate-x-full) {
+    transform: translateY(0) !important;
+  }
+  #draw-help {
+    display: none !important;
+  }
+  #draw-watermark {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  #draw-toolbar {
+    height: 36px !important;
+    padding: 0.15rem 0.35rem !important;
+    gap: 0.25rem !important;
+  }
+  #draw-toolbar .draw-btn {
+    padding: 0.25rem 0.4rem !important;
+    font-size: 0.6rem !important;
+    border-radius: 0.375rem !important;
+  }
+  #draw-toolbar .draw-btn svg {
+    width: 14px !important;
+    height: 14px !important;
+    margin-right: 0 !important;
+  }
+  body:has(#draw-canvas) #resource-palette {
+    top: 36px !important;
+  }
+  #draw-props {
+    max-height: 60vh !important;
+  }
+}

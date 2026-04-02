@@ -193,7 +193,11 @@ class IncidentEngine {
       if (scripted.triggered) continue;
       if (elapsedSeconds >= scripted.triggerTime) {
         scripted.triggered = true;
-        this.spawnIncident(scripted.def, scripted.target, scripted.severity || scripted.def.severity);
+        let target = scripted.target;
+        if (target === 'random' || target === 'multiple') {
+          target = this.selectRandomTarget(scripted.def);
+        }
+        this.spawnIncident(scripted.def, target, scripted.severity || scripted.def.severity);
       }
     }
   }
