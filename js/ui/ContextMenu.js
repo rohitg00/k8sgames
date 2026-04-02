@@ -130,12 +130,11 @@ export class ContextMenu {
     this.container.classList.remove('hidden');
     this.visible = true;
 
-    this.container.querySelectorAll('[data-event]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const event = btn.dataset.event;
-        this._executeAction(event);
-        this.hide();
-      });
+    this.container.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-event]');
+      if (!btn) return;
+      this._executeAction(btn.dataset.event);
+      this.hide();
     });
 
     document.addEventListener('click', this._boundClose);

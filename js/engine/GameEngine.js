@@ -48,7 +48,7 @@ class EventBus {
 
     const handlers = this._handlers.get(event);
     if (handlers) {
-      for (const handler of handlers) {
+      for (const handler of [...handlers]) {
         try {
           handler(data);
         } catch (err) {

@@ -25,6 +25,7 @@ export class MetricsDashboard {
     this._boundTick = this._onTick.bind(this);
     this._boundSelect = this._onResourceSelect.bind(this);
     this._boundResize = this._onResize.bind(this);
+    this._boundDeselect = this._onResourceDeselect.bind(this);
   }
 
   init() {
@@ -95,7 +96,8 @@ export class MetricsDashboard {
       const rect = canvas.getBoundingClientRect();
       canvas.width = rect.width * window.devicePixelRatio;
       canvas.height = rect.height * window.devicePixelRatio;
-      this.contexts[key].scale(window.devicePixelRatio, window.devicePixelRatio);
+      const dpr = window.devicePixelRatio;
+      this.contexts[key].setTransform(dpr, 0, 0, dpr, 0, 0);
     }
   }
 
@@ -108,11 +110,13 @@ export class MetricsDashboard {
     if (engine) {
       engine.on('tick', this._boundTick);
       engine.on('resource:selected', this._boundSelect);
-      engine.on('resource:deselected', () => {
-        this.selectedResource = null;
-        document.getElementById('metrics-scope').textContent = 'Cluster-wide';
-      });
+      engine.on('resource:deselected', this._boundDeselect);
     }
+  }
+
+  _onResourceDeselect() {
+    this.selectedResource = null;
+    document.getElementById('metrics-scope').textContent = 'Cluster-wide';
   }
 
   _onKeydown(e) {
@@ -313,6 +317,7 @@ export class MetricsDashboard {
     if (engine) {
       engine.off?.('tick', this._boundTick);
       engine.off?.('resource:selected', this._boundSelect);
+      engine.off?.('resource:deselected', this._boundDeselect);
     }
     if (this._animFrameId) cancelAnimationFrame(this._animFrameId);
     this.container?.remove();
