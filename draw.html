@@ -992,16 +992,19 @@
         if (allResources.length === 0) return;
 
         const tiers = {
-          namespace:  { kinds: ['Namespace'], z: -10, spacing: 5 },
-          node:       { kinds: ['Node'], z: -5, spacing: 6 },
-          workload:   { kinds: ['Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet'], z: 0, spacing: 4 },
+          ingress:    { kinds: ['Ingress', 'NetworkPolicy'], z: -12, spacing: 4 },
+          service:    { kinds: ['Service'], z: -8, spacing: 4 },
+          scaling:    { kinds: ['HorizontalPodAutoscaler', 'PodDisruptionBudget'], z: -4, spacing: 3.5 },
+          workload:   { kinds: ['Deployment', 'StatefulSet', 'DaemonSet'], z: 0, spacing: 4 },
           batch:      { kinds: ['Job', 'CronJob'], z: 3, spacing: 3.5 },
-          pod:        { kinds: ['Pod'], z: 6, spacing: 2.5 },
-          network:    { kinds: ['Service', 'Ingress', 'NetworkPolicy'], z: 10, spacing: 4 },
+          replicaset: { kinds: ['ReplicaSet'], z: 6, spacing: 3 },
+          pod:        { kinds: ['Pod'], z: 10, spacing: 2.5 },
           config:     { kinds: ['ConfigMap', 'Secret'], z: 14, spacing: 3.5 },
-          storage:    { kinds: ['PersistentVolumeClaim', 'PersistentVolume', 'StorageClass'], z: 17, spacing: 4 },
-          scaling:    { kinds: ['HorizontalPodAutoscaler', 'ResourceQuota', 'LimitRange', 'PodDisruptionBudget'], z: 20, spacing: 3.5 },
-          rbac:       { kinds: ['ServiceAccount', 'Role', 'ClusterRole', 'RoleBinding', 'ClusterRoleBinding'], z: 23, spacing: 3 },
+          storage:    { kinds: ['PersistentVolumeClaim', 'PersistentVolume', 'StorageClass'], z: 18, spacing: 4 },
+          quota:      { kinds: ['ResourceQuota', 'LimitRange'], z: 21, spacing: 3 },
+          rbac:       { kinds: ['ServiceAccount', 'Role', 'ClusterRole', 'RoleBinding', 'ClusterRoleBinding'], z: 24, spacing: 3 },
+          namespace:  { kinds: ['Namespace'], z: 27, spacing: 5 },
+          node:       { kinds: ['Node'], z: 31, spacing: 6 },
         };
 
         const targets = new Map();
