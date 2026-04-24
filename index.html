@@ -1211,6 +1211,26 @@
               <input id="edit-replicas" type="number" min="0" max="20" value="${resource.spec?.replicas ?? 1}" class="w-full px-3 py-1.5 text-sm text-white bg-black/40 border border-white/15 rounded-lg outline-none focus:border-sky-500/50 font-mono" />
             </div>`;
         }
+        if (kind === 'Secret') {
+          extraFields += `
+            <div class="mt-3">
+              <div class="text-[10px] text-white/40 uppercase tracking-wider mb-1">Secret Type</div>
+              <select id="edit-secret-type" class="w-full px-3 py-1.5 text-sm text-white bg-black/40 border border-white/15 rounded-lg outline-none focus:border-sky-500/50">
+                <option value="Opaque" ${resource.type === 'Opaque' ? 'selected' : ''}>Opaque</option>
+                <option value="kubernetes.io/tls" ${resource.type === 'kubernetes.io/tls' ? 'selected' : ''}>kubernetes.io/tls</option>
+                <option value="kubernetes.io/dockerconfigjson" ${resource.type === 'kubernetes.io/dockerconfigjson' ? 'selected' : ''}>kubernetes.io/dockerconfigjson</option>
+              </select>
+            </div>`;
+        }
+        if (kind === 'Ingress') {
+          const defaultTlsSecret = resource.spec?.tls?.[0]?.secretName || '';
+          extraFields += `
+            <div class="mt-3">
+              <div class="text-[10px] text-white/40 uppercase tracking-wider mb-1">TLS Secret Name</div>
+              <input id="edit-ingress-tls" type="text" value="${defaultTlsSecret}" placeholder="e.g. my-tls" class="w-full px-3 py-1.5 text-sm text-white bg-black/40 border border-white/15 rounded-lg outline-none focus:border-sky-500/50 font-mono" />
+              <div class="text-[10px] text-white/30 mt-1">Leave blank to disable TLS</div>
+            </div>`;
+        }
         if (kind === 'Service') {
           const selectorStr = Object.entries(resource.spec?.selector || {}).map(([k,v]) => `${k}=${v}`).join(', ');
           const deployments = this.engine.cluster.getByKind('Deployment');
@@ -1303,6 +1323,22 @@
           if (svcType) {
             updates.spec = updates.spec || {};
             updates.spec.type = svcType.value;
+          }
+
+          const secretType = document.getElementById('edit-secret-type');
+          if (secretType && kind === 'Secret') {
+            resource.type = secretType.value;
+          }
+
+          const ingressTls = document.getElementById('edit-ingress-tls');
+          if (ingressTls && kind === 'Ingress') {
+            updates.spec = updates.spec || {};
+            const sn = ingressTls.value.trim();
+            if (sn) {
+              updates.spec.tls = [{ hosts: [resource.metadata.name + '.example.com'], secretName: sn }];
+            } else {
+              updates.spec.tls = [];
+            }
           }
 
           this.engine.cluster.update(uid, updates);
