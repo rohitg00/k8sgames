@@ -1205,10 +1205,30 @@
 
         let extraFields = '';
         if (kind === 'Deployment' || kind === 'StatefulSet' || kind === 'ReplicaSet') {
+          const memReq = resource.spec?.resources?.requests?.memory || '128Mi';
+          const memLim = resource.spec?.resources?.limits?.memory || '256Mi';
+          const cpuReq = resource.spec?.resources?.requests?.cpu || '';
+          const cpuLim = resource.spec?.resources?.limits?.cpu || '';
+          const hasProbes = !!resource.spec?.livenessProbe;
+          
           extraFields += `
             <div class="mt-3">
               <div class="text-[10px] text-white/40 uppercase tracking-wider mb-1">Replicas</div>
               <input id="edit-replicas" type="number" min="0" max="20" value="${resource.spec?.replicas ?? 1}" class="w-full px-3 py-1.5 text-sm text-white bg-black/40 border border-white/15 rounded-lg outline-none focus:border-sky-500/50 font-mono" />
+            </div>
+            <div class="mt-3">
+              <div class="text-[10px] text-white/40 uppercase tracking-wider mb-1">Memory Request & Limit</div>
+              <div class="flex gap-2">
+                <input id="edit-mem-req" type="text" value="${cpuReq ? memReq : ''}" placeholder="Req e.g. 128Mi" class="w-1/2 px-3 py-1.5 text-sm text-white bg-black/40 border border-white/15 rounded-lg outline-none focus:border-sky-500/50 font-mono" />
+                <input id="edit-mem-lim" type="text" value="${cpuLim ? memLim : ''}" placeholder="Lim e.g. 256Mi" class="w-1/2 px-3 py-1.5 text-sm text-white bg-black/40 border border-white/15 rounded-lg outline-none focus:border-sky-500/50 font-mono" />
+              </div>
+            </div>
+            <div class="mt-3">
+              <div class="text-[10px] text-white/40 uppercase tracking-wider mb-1">Production Readiness</div>
+              <label class="flex items-center gap-2 mt-1">
+                <input type="checkbox" id="edit-probes" ${hasProbes ? 'checked' : ''} class="rounded border-white/15 bg-black/40 text-sky-500">
+                <span class="text-xs text-white/80">Enable Liveness & Readiness Probes</span>
+              </label>
             </div>`;
         }
         if (kind === 'Secret') {
@@ -1251,6 +1271,11 @@
                 <option value="NodePort" ${resource.spec?.type === 'NodePort' ? 'selected' : ''}>NodePort</option>
                 <option value="LoadBalancer" ${resource.spec?.type === 'LoadBalancer' ? 'selected' : ''}>LoadBalancer</option>
               </select>
+            </div>
+            <div class="mt-3">
+              <div class="text-[10px] text-white/40 uppercase tracking-wider mb-1">Cluster IP</div>
+              <input id="edit-cluster-ip" type="text" value="${resource.spec?.clusterIP || ''}" placeholder='e.g. "None"' class="w-full px-3 py-1.5 text-sm text-white bg-black/40 border border-white/15 rounded-lg outline-none focus:border-sky-500/50 font-mono" />
+              <div class="text-[10px] text-white/30 mt-1">Leave empty for auto-assign, or "None" for Headless</div>
             </div>`;
         }
 
@@ -1305,6 +1330,24 @@
           if (replicasInput) {
             updates.spec = updates.spec || {};
             updates.spec.replicas = parseInt(replicasInput.value, 10) || 1;
+            
+            const memReq = document.getElementById('edit-mem-req');
+            const memLim = document.getElementById('edit-mem-lim');
+            if (memReq && memLim && memReq.value.trim() && memLim.value.trim()) {
+              updates.spec.resources = {
+                requests: { cpu: '100m', memory: memReq.value.trim() },
+                limits: { cpu: '500m', memory: memLim.value.trim() }
+              };
+            }
+
+            const probesCheck = document.getElementById('edit-probes');
+            if (probesCheck && probesCheck.checked) {
+              updates.spec.livenessProbe = { httpGet: { path: '/health', port: 80 } };
+              updates.spec.readinessProbe = { httpGet: { path: '/ready', port: 80 } };
+            } else if (probesCheck) {
+              updates.spec.livenessProbe = null;
+              updates.spec.readinessProbe = null;
+            }
           }
 
           const selectorInput = document.getElementById('edit-selector');
@@ -1323,6 +1366,16 @@
           if (svcType) {
             updates.spec = updates.spec || {};
             updates.spec.type = svcType.value;
+          }
+
+          const clusterIpInput = document.getElementById('edit-cluster-ip');
+          if (clusterIpInput) {
+            let val = clusterIpInput.value.trim();
+            if (val) {
+              if (val.toLowerCase() === 'none') val = 'None';
+              updates.spec = updates.spec || {};
+              updates.spec.clusterIP = val;
+            }
           }
 
           const secretType = document.getElementById('edit-secret-type');

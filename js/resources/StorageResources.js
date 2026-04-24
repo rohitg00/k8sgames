@@ -180,8 +180,6 @@ export class PersistentVolumeClaim extends ResourceBase {
     this.phase = 'Pending';
     this.boundVolume = null;
     this.capacity = null;
-    this.bindingTimer = 0;
-    this.bindingDelay = 1 + Math.random() * 3;
     this.mountedBy = [];
     this.usedBytes = 0;
     this.capacityBytes = parseStorage(this.spec.resources.requests.storage);
@@ -240,14 +238,6 @@ export class PersistentVolumeClaim extends ResourceBase {
 
   tick(deltaTime) {
     super.tick(deltaTime);
-
-    if (this.phase === 'Pending') {
-      this.bindingTimer += deltaTime;
-      if (this.bindingTimer >= this.bindingDelay) {
-        const pvName = `pv-${this.uid.substring(0, 8)}`;
-        this.bind(pvName);
-      }
-    }
 
     if (this.phase === 'Bound' && this.mountedBy.length > 0) {
       this.usedBytes = Math.min(

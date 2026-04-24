@@ -213,6 +213,45 @@ export class GameEngine {
       this._reputation = Math.max(0, this._reputation - 5);
     });
 
+    this.eventBus.on('resource:healed', (data) => {
+      if (!data.target || !data.kind || !this.cluster) return;
+      const resources = this.cluster.getResourcesByKind(data.kind);
+      const res = resources.find(r => r.metadata?.name === data.target);
+      if (res) {
+        if (data.kind === 'Node') {
+          res.status.phase = 'Running';
+          res.setCondition('Ready', 'True', 'KubeletReady');
+        } else if (data.kind === 'Pod') {
+          res.status.phase = 'Running';
+          res.setCondition('Ready', 'True', 'ContainersReady');
+          if (res.status.containerStatuses) {
+            for (const cs of res.status.containerStatuses) {
+              cs.ready = true;
+              cs.state = { running: { startedAt: new Date().toISOString() } };
+            }
+          }
+        }
+      }
+    });
+
+    this.eventBus.on('resource:rescheduled', (data) => {
+      if (!data.target || !this.cluster) return;
+      const pods = this.cluster.getResourcesByKind('Pod') || [];
+      const isNode = (this.cluster.getResourcesByKind('Node') || []).some(n => n.metadata?.name === data.target);
+      
+      if (isNode) {
+        const podsOnNode = pods.filter(p => p.spec?.nodeName === data.target);
+        for (const p of podsOnNode) {
+          this.cluster.remove(p.uid);
+        }
+      } else {
+        const podToDelete = pods.find(p => p.metadata?.name === data.target);
+        if (podToDelete) {
+          this.cluster.remove(podToDelete.uid);
+        }
+      }
+    });
+
     this.eventBus.on('hpa:scaled', (data) => {
       this._addNotification('info', `HPA scaled ${data.target} ${data.direction} to ${data.to} replicas`);
       if (data.direction === 'up') {
