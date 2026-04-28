@@ -37,7 +37,7 @@
   ],
   "redirects": [
     {
-      "source": "/:path*",
+      "source": "/((?!robots\\.txt$).*)",
       "has": [
         { "type": "header", "key": "user-agent", "value": "(?i).*(GPTBot|ClaudeBot|anthropic-ai|CCBot|Google-Extended|Applebot-Extended|Bytespider|Amazonbot|Meta-ExternalAgent|cohere-ai|Diffbot|ImagesiftBot|Omgilibot|peer39_crawler|YouBot|Timpibot|ICC-Crawler|AhrefsBot|SemrushBot|MJ12bot|DotBot|PetalBot|BLEXBot|MegaIndex|SeznamBot|DataForSeoBot).*"
         }
