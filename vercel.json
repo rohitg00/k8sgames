@@ -2,5 +2,48 @@
   "rewrites": [
     { "source": "/draw", "destination": "/draw.html" }
   ],
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':!README.md' ':!*.md' ':!LICENSE' ':!.github'"
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':!README.md' ':!*.md' ':!LICENSE' ':!.github'",
+  "headers": [
+    {
+      "source": "/js/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000" }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(css|png|jpg|jpeg|svg|webp|woff2|woff|ttf|ico)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000" }
+      ]
+    },
+    {
+      "source": "/(.*)\\.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800" }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800" }
+      ]
+    },
+    {
+      "source": "/draw",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800" }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/((?!robots\\.txt$).*)",
+      "has": [
+        { "type": "header", "key": "user-agent", "value": "(?i).*(GPTBot|ClaudeBot|anthropic-ai|CCBot|Google-Extended|Applebot-Extended|Bytespider|Amazonbot|Meta-ExternalAgent|cohere-ai|Diffbot|ImagesiftBot|Omgilibot|peer39_crawler|YouBot|Timpibot|ICC-Crawler|AhrefsBot|SemrushBot|MJ12bot|DotBot|PetalBot|BLEXBot|MegaIndex|SeznamBot|DataForSeoBot).*"
+        }
+      ],
+      "destination": "/robots.txt",
+      "permanent": false
+    }
+  ]
 }
