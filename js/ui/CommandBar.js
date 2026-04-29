@@ -643,6 +643,21 @@ export class CommandBar {
     };
 
     const def = defaults[kind] || { spec: {}, status: {} };
+
+    const ipArgIdx = args.indexOf('--clusterip');
+    if (ipArgIdx !== -1 && args[ipArgIdx + 1] && kind === 'Service') {
+      let ipVal = args[ipArgIdx + 1];
+      if (ipVal.toLowerCase() === 'none') ipVal = 'None';
+      def.spec.clusterIP = ipVal;
+    } else {
+      const inlineIp = args.find(a => a.startsWith('--clusterip='));
+      if (inlineIp && kind === 'Service') {
+        let ipVal = inlineIp.split('=')[1];
+        if (ipVal.toLowerCase() === 'none') ipVal = 'None';
+        def.spec.clusterIP = ipVal;
+      }
+    }
+
     const added = cluster.addResource({
       kind,
       name,

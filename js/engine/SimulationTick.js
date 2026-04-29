@@ -56,6 +56,7 @@ export class SimulationTick {
     this._tickStatefulSets(dt);
     this._tickDaemonSets(dt);
     this._tickJobs(dt);
+    this._tickPVCBinding(dt);
 
     if (this.tickCount % this.cronCheckInterval === 0) {
       this._tickCronJobs(dt);
@@ -975,6 +976,68 @@ export class SimulationTick {
 
   _randomSuffix() {
     return Math.random().toString(36).substring(2, 7);
+  }
+
+  _tickPVCBinding(dt) {
+    const pvcs = this.cluster.getByKind('PersistentVolumeClaim')
+      .filter((pvc) => pvc.phase === 'Pending' || pvc.status?.phase === 'Pending');
+    if (pvcs.length === 0) return;
+
+    const pvs = this.cluster.getByKind('PersistentVolume')
+      .filter((pv) => {
+        const phase = pv.phase || pv.status?.phase;
+        return phase === 'Available' || (phase === 'Pending' && !pv.spec?.claimRef);
+      });
+
+    for (const pvc of pvcs) {
+      let bestPV = null;
+      let bestPVCap = Infinity;
+
+      const pvcClass = pvc.spec?.storageClassName || 'standard';
+      const pvcStorage = pvc.spec?.resources?.requests?.storage || '10Gi';
+      const pvcCap = pvc.capacityBytes !== undefined ? pvc.capacityBytes : this.cluster._parseMemory(pvcStorage);
+
+      for (const pv of pvs) {
+        const pvPhase = pv.phase || pv.status?.phase;
+        if (pvPhase !== 'Available' && pvPhase !== 'Pending') continue;
+        if (pv.spec?.claimRef) continue;
+        
+        const pvClass = pv.spec?.storageClassName || 'standard';
+        if (pvClass !== pvcClass) continue;
+        
+        const pvStorage = pv.spec?.capacity?.storage || '10Gi';
+        const pvCap = pv.capacityBytes !== undefined ? pv.capacityBytes : this.cluster._parseMemory(pvStorage);
+
+        if (pvCap >= pvcCap) {
+          if (!bestPV || pvCap < bestPVCap) {
+            bestPV = pv;
+            bestPVCap = pvCap;
+          }
+        }
+      }
+
+      if (bestPV) {
+        if (typeof pvc.bind === 'function') {
+          pvc.bind(bestPV.metadata.name);
+        } else {
+          pvc.setPhase('Bound');
+          pvc.spec = pvc.spec || {};
+          pvc.spec.volumeName = bestPV.metadata.name;
+          pvc.recordEvent('Normal', 'Bound', `Bound to pv ${bestPV.metadata.name}`);
+        }
+
+        if (typeof bestPV.bind === 'function') {
+          bestPV.bind(pvc.metadata.name, pvc.metadata.namespace, pvc.metadata.uid);
+        } else {
+          bestPV.setPhase('Bound');
+          bestPV.spec = bestPV.spec || {};
+          bestPV.spec.claimRef = { name: pvc.metadata.name, namespace: pvc.metadata.namespace, uid: pvc.metadata.uid };
+          bestPV.recordEvent('Normal', 'Bound', `Bound to pvc ${pvc.metadata.name}`);
+        }
+
+        bestPV.phase = 'Bound';
+      }
+    }
   }
 }
 
