@@ -44,6 +44,18 @@ export class SimulationTick {
     this.tickCount++;
     const dt = deltaTime * this.tickRate;
 
+    if (this.cluster.isReadOnly?.()) {
+      if (this.eventBus) {
+        this.eventBus.emit('simulation:tick', {
+          tickCount: this.tickCount,
+          deltaTime: dt,
+          stats: this.cluster.getClusterStats(),
+          readOnly: true,
+        });
+      }
+      return;
+    }
+
     this.cluster.startBatch();
 
     this._tickNodes(dt);

@@ -124,7 +124,8 @@ export class InspectorPanel {
 
     const editBtn = document.getElementById('inspector-edit');
     const editableKinds = ['Deployment', 'Service', 'ConfigMap', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Secret', 'Pod', 'Ingress', 'NetworkPolicy', 'HorizontalPodAutoscaler'];
-    if (editableKinds.includes(kind)) {
+    const readOnly = window.game?.cluster?.isReadOnly?.() || false;
+    if (editableKinds.includes(kind) && !readOnly) {
       editBtn.classList.remove('hidden');
     } else {
       editBtn.classList.add('hidden');
@@ -473,6 +474,13 @@ export class InspectorPanel {
 
   _onEdit() {
     if (!this.resource) return;
+    if (window.game?.cluster?.isReadOnly?.()) {
+      window.game?.engine?.emit('cluster:write-blocked', {
+        action: 'edit',
+        reason: window.game.cluster.readOnlyReason || 'Mirrored cluster is read-only',
+      });
+      return;
+    }
     const kind = this.resource.kind;
     const name = this.resource.metadata?.name;
     window.game?.engine.emit('ui:edit-resource', { uid: this.resource.metadata?.uid, kind, name });

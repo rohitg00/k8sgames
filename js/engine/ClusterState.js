@@ -39,22 +39,56 @@ export class ClusterState {
     this._watchCallbacks = new Map();
     this._batchMode = false;
     this._batchedEvents = [];
+    this.readOnly = false;
+    this.readOnlyReason = '';
+    this.mirrorInfo = null;
 
     for (const kind of RESOURCE_KINDS) {
       this.kindIndex.set(kind, new Set());
     }
 
-    this._initDefaultNamespaces();
+    this._initDefaultNamespaces({ force: true });
   }
 
-  _initDefaultNamespaces() {
+  _initDefaultNamespaces(options = {}) {
     const defaults = ['default', 'kube-system', 'kube-public', 'kube-node-lease'];
     for (const ns of defaults) {
       const resource = new ResourceBase('Namespace', 'v1', ns, '');
       resource.setPhase('Active');
       resource.setLabel('kubernetes.io/metadata.name', ns);
-      this.add(resource);
+      this.add(resource, options);
     }
+  }
+
+  setReadOnly(enabled, reason = '') {
+    this.readOnly = Boolean(enabled);
+    this.readOnlyReason = this.readOnly ? reason : '';
+    if (!this.readOnly) {
+      this.mirrorInfo = null;
+    }
+    if (this.eventBus) {
+      this.eventBus.emit('cluster:readonly-changed', {
+        readOnly: this.readOnly,
+        reason: this.readOnlyReason,
+        mirrorInfo: this.mirrorInfo,
+      });
+    }
+  }
+
+  isReadOnly() {
+    return this.readOnly;
+  }
+
+  _canWrite(action, options = {}) {
+    if (!this.readOnly || options.force) return true;
+    if (this.eventBus) {
+      this.eventBus.emit('cluster:write-blocked', {
+        action,
+        reason: this.readOnlyReason || 'Cluster is read-only',
+        mirrorInfo: this.mirrorInfo,
+      });
+    }
+    return false;
   }
 
   get totalResources() {
@@ -99,13 +133,14 @@ export class ClusterState {
     }
   }
 
-  add(resource) {
+  add(resource, options = {}) {
+    if (!this._canWrite('add', options)) return null;
     if (!(resource instanceof ResourceBase)) {
       throw new Error('Resource must be an instance of ResourceBase');
     }
     const existing = this.resources.get(resource.uid);
     if (existing) {
-      return this.update(resource.uid, resource);
+      return this.update(resource.uid, resource, options);
     }
 
     this.resources.set(resource.uid, resource);
@@ -124,7 +159,8 @@ export class ClusterState {
     return resource;
   }
 
-  update(uid, updates) {
+  update(uid, updates, options = {}) {
+    if (!this._canWrite('update', options)) return null;
     const resource = this.resources.get(uid);
     if (!resource) return null;
 
@@ -168,7 +204,8 @@ export class ClusterState {
     return resource;
   }
 
-  remove(uid) {
+  remove(uid, options = {}) {
+    if (!this._canWrite('remove', options)) return null;
     const resource = this.resources.get(uid);
     if (!resource) return null;
 
@@ -180,7 +217,7 @@ export class ClusterState {
 
     const children = this.getChildren(uid);
     for (const child of children) {
-      this.remove(child.uid);
+      this.remove(child.uid, options);
     }
 
     this._removeFromKindIndex(resource);
@@ -696,7 +733,8 @@ export class ClusterState {
     };
   }
 
-  clear() {
+  clear(options = {}) {
+    if (!this._canWrite('clear', options)) return false;
     this.resources.clear();
     this.relationships.clear();
     this.reverseRelationships.clear();
@@ -712,7 +750,9 @@ export class ClusterState {
       set.clear();
     }
 
-    this._initDefaultNamespaces();
+    if (!options.skipDefaultNamespaces) {
+      this._initDefaultNamespaces({ force: true });
+    }
 
     if (this.eventBus) {
       this.eventBus.emit('cluster:reset', { timestamp: Date.now() });
@@ -727,31 +767,137 @@ export class ClusterState {
     return [...RESOURCE_KINDS];
   }
 
-  addResource(obj) {
+  addResource(obj, options = {}) {
+    if (!this._canWrite('addResource', options)) return null;
     const ns = isClusterScopedKind(obj.kind) ? '' : (obj.metadata?.namespace || 'default');
 
     const resource = new ResourceBase(obj.kind, {
+      apiVersion: obj.apiVersion || 'v1',
       name: obj.name || obj.metadata?.name || 'unnamed',
       namespace: ns,
       labels: obj.metadata?.labels || {},
       annotations: obj.metadata?.annotations || {},
+      ownerReferences: obj.metadata?.ownerReferences || [],
+      finalizers: obj.metadata?.finalizers || [],
     });
+    if (obj.metadata?.uid) resource.metadata.uid = obj.metadata.uid;
+    if (obj.metadata?.creationTimestamp) resource.metadata.creationTimestamp = obj.metadata.creationTimestamp;
+    if (obj.metadata?.generation) resource.metadata.generation = obj.metadata.generation;
+    if (obj.metadata?.resourceVersion) resource.metadata.resourceVersion = obj.metadata.resourceVersion;
     if (obj.spec) {
-      resource.spec = typeof obj.spec === 'object' ? { ...obj.spec } : {};
+      resource.spec = typeof obj.spec === 'object' ? JSON.parse(JSON.stringify(obj.spec)) : {};
     }
-    if (obj.status?.phase) {
-      resource.setPhase(obj.status.phase);
+    if (obj.status) {
+      resource.status = {
+        ...resource.status,
+        ...JSON.parse(JSON.stringify(obj.status)),
+        phase: obj.status.phase || this._derivePhase(obj),
+        conditions: Array.isArray(obj.status.conditions) ? JSON.parse(JSON.stringify(obj.status.conditions)) : [],
+      };
+    } else {
+      resource.status.phase = this._derivePhase(obj);
     }
-    return this.add(resource);
+    return this.add(resource, options);
   }
 
   removeResource(kind, name, namespace = 'default') {
+    if (!this._canWrite('removeResource')) return null;
     const key = `${kind}:${namespace}:${name}`;
     const uid = this.nameIndex.get(key);
     if (uid) {
       return this.remove(uid);
     }
     return null;
+  }
+
+  importSnapshot(objects, options = {}) {
+    const previousReadOnly = this.readOnly;
+    const previousReason = this.readOnlyReason;
+
+    this.setReadOnly(false);
+    this.clear({ force: true, skipDefaultNamespaces: true });
+
+    const imported = [];
+    for (const obj of objects) {
+      const normalized = this._normalizeKubernetesObject(obj);
+      if (!normalized) continue;
+      const resource = this.addResource(normalized, { force: true });
+      if (resource) imported.push(resource);
+    }
+
+    const readOnly = options.readOnly ?? previousReadOnly;
+    if (readOnly) {
+      this.mirrorInfo = {
+        source: options.source || 'Kubernetes snapshot',
+        importedAt: Date.now(),
+        resourceCount: imported.length,
+      };
+      this.setReadOnly(true, options.reason || previousReason || 'Mirrored cluster is read-only');
+    }
+
+    if (this.eventBus) {
+      this.eventBus.emit('cluster:imported', {
+        resources: imported,
+        count: imported.length,
+        readOnly: this.readOnly,
+        mirrorInfo: this.mirrorInfo,
+      });
+    }
+
+    return imported;
+  }
+
+  _normalizeKubernetesObject(obj) {
+    if (!obj || typeof obj !== 'object' || !obj.kind || !obj.metadata?.name) return null;
+    const metadata = obj.metadata || {};
+    const spec = obj.spec && typeof obj.spec === 'object' ? JSON.parse(JSON.stringify(obj.spec)) : {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (['apiVersion', 'kind', 'metadata', 'spec', 'status'].includes(key)) continue;
+      if (key === 'managedFields') continue;
+      if (value !== undefined && spec[key] === undefined) {
+        spec[key] = JSON.parse(JSON.stringify(value));
+      }
+    }
+    return {
+      apiVersion: obj.apiVersion || 'v1',
+      kind: obj.kind,
+      name: metadata.name,
+      metadata: {
+        ...metadata,
+        namespace: isClusterScopedKind(obj.kind) ? '' : (metadata.namespace || 'default'),
+        labels: metadata.labels || {},
+        annotations: metadata.annotations || {},
+        ownerReferences: metadata.ownerReferences || [],
+        finalizers: metadata.finalizers || [],
+      },
+      spec,
+      status: obj.status || { phase: this._derivePhase(obj) },
+    };
+  }
+
+  _derivePhase(obj) {
+    if (obj.status?.phase) return obj.status.phase;
+    if (obj.kind === 'Namespace') return obj.status?.phase || 'Active';
+    if (obj.kind === 'Node') {
+      const ready = (obj.status?.conditions || []).find((c) => c.type === 'Ready');
+      return ready?.status === 'True' ? 'Running' : 'NotReady';
+    }
+    if (['Deployment', 'StatefulSet', 'ReplicaSet'].includes(obj.kind)) {
+      const desired = obj.spec?.replicas ?? 1;
+      const ready = obj.status?.readyReplicas ?? obj.status?.availableReplicas ?? 0;
+      return ready >= desired ? 'Running' : 'Pending';
+    }
+    if (obj.kind === 'DaemonSet') {
+      const desired = obj.status?.desiredNumberScheduled ?? 0;
+      const ready = obj.status?.numberReady ?? 0;
+      return desired > 0 && ready >= desired ? 'Running' : 'Pending';
+    }
+    if (obj.kind === 'Job') {
+      if (obj.status?.failed) return 'Failed';
+      if (obj.status?.succeeded) return 'Succeeded';
+      return obj.status?.active ? 'Running' : 'Pending';
+    }
+    return 'Running';
   }
 }
 
