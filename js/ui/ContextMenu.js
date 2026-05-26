@@ -56,6 +56,16 @@ const DEFAULT_ACTIONS = [
   ]},
 ];
 
+const MUTATING_EVENTS = new Set([
+  'resource:delete',
+  'deployment:scale',
+  'deployment:restart',
+  'deployment:rollback',
+  'node:cordon',
+  'node:uncordon',
+  'node:drain',
+]);
+
 export class ContextMenu {
   constructor() {
     this.container = null;
@@ -96,13 +106,20 @@ export class ContextMenu {
 
     const kind = this.resource.kind || 'Unknown';
     const name = this.resource.metadata?.name || 'unnamed';
-    const groups = ACTION_MAP[kind] || DEFAULT_ACTIONS;
+    const readOnly = window.game?.cluster?.isReadOnly?.() || false;
+    const groups = (ACTION_MAP[kind] || DEFAULT_ACTIONS)
+      .map((group) => ({
+        ...group,
+        actions: readOnly ? group.actions.filter((action) => !MUTATING_EVENTS.has(action.event)) : group.actions,
+      }))
+      .filter((group) => group.actions.length > 0);
 
     this.container.innerHTML = `
       <div class="backdrop-blur-xl bg-gray-900/95 border border-white/10 rounded-lg shadow-2xl overflow-hidden min-w-[180px]">
         <div class="px-3 py-2 border-b border-white/5">
           <div class="text-white/90 text-xs font-medium truncate">${this._escapeHTML(name)}</div>
           <div class="text-white/30 text-[10px]">${this._escapeHTML(kind)}</div>
+          ${readOnly ? '<div class="text-amber-300/70 text-[10px] mt-1">Read-only mirror</div>' : ''}
         </div>
         ${groups.map((group, gi) => `
           ${gi > 0 ? '<div class="h-px bg-white/5"></div>' : ''}
@@ -189,6 +206,14 @@ export class ContextMenu {
     const kind = this.resource.kind;
     const name = this.resource.metadata?.name;
     const namespace = this.resource.metadata?.namespace;
+
+    if (cluster?.isReadOnly?.() && MUTATING_EVENTS.has(event)) {
+      engine.emit('cluster:write-blocked', {
+        action: event,
+        reason: cluster.readOnlyReason || 'Mirrored cluster is read-only',
+      });
+      return;
+    }
 
     switch (event) {
       case 'resource:delete':

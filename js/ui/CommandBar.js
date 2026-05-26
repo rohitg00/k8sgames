@@ -295,6 +295,17 @@ export class CommandBar {
     const engine = window.game?.engine;
     if (!cluster || !engine) return { error: true, message: 'Error: Game not initialized' };
 
+    if (cluster.isReadOnly?.() && this._isReadOnlyBlockedCommand(cmd, args)) {
+      engine.emit('cluster:write-blocked', {
+        action: cmd,
+        reason: cluster.readOnlyReason || 'Mirrored cluster is read-only',
+      });
+      return {
+        error: true,
+        message: `Error from server (Forbidden): ${cluster.readOnlyReason || 'mirrored cluster is read-only'}`,
+      };
+    }
+
     switch (cmd) {
       case 'get': return this._cmdGet(args, cluster);
       case 'describe': return this._cmdDescribe(args, cluster);
@@ -314,6 +325,14 @@ export class CommandBar {
       case 'explain': return this._cmdExplain(args);
       default: return { error: true, message: `error: unknown command "${cmd}"\nKnown commands: ${COMMANDS.join(', ')}` };
     }
+  }
+
+  _isReadOnlyBlockedCommand(cmd, args = []) {
+    if (cmd === 'rollout') {
+      const action = args[0];
+      return action !== 'status' && action !== 'history';
+    }
+    return ['scale', 'delete', 'apply', 'create', 'run', 'label', 'drain', 'cordon', 'uncordon'].includes(cmd);
   }
 
   _cmdGet(args, cluster) {

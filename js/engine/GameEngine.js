@@ -123,6 +123,7 @@ const GAME_MODES = {
   SANDBOX: 'sandbox',
   CHAOS: 'chaos',
   CHALLENGE: 'challenge',
+  MIRROR: 'mirror',
 };
 
 const GAME_STATES = {
@@ -241,6 +242,10 @@ export class GameEngine {
       if (data.resource && data.resource.status.phase === 'Failed') {
         this._score -= 5;
       }
+    });
+
+    this.eventBus.on('cluster:write-blocked', (data) => {
+      this._addNotification('warning', data.reason || 'Mirrored cluster is read-only');
     });
   }
 
@@ -403,6 +408,13 @@ export class GameEngine {
 
     this.eventBus.emit('command:executed', command);
 
+    if (this.cluster.isReadOnly?.() && this._isMutatingCommand(command)) {
+      const message = this.cluster.readOnlyReason || 'Mirrored cluster is read-only';
+      this.eventBus.emit('command:blocked', { command, message });
+      this.eventBus.emit('cluster:write-blocked', { action: command.type, reason: message });
+      return { success: false, message };
+    }
+
     switch (command.type) {
       case 'create':
         return this._handleCreate(command);
@@ -428,6 +440,14 @@ export class GameEngine {
         this.eventBus.emit('command:unknown', command);
         return { success: false, message: `Unknown command: ${command.type}` };
     }
+  }
+
+  _isMutatingCommand(command) {
+    if (!command) return false;
+    if (command.type === 'rollout') {
+      return command.subcommand !== 'status' && command.subcommand !== 'history';
+    }
+    return ['create', 'delete', 'scale', 'apply', 'cordon', 'uncordon', 'drain'].includes(command.type);
   }
 
   _handleCreate(command) {
@@ -810,7 +830,8 @@ export class GameEngine {
 
   reset() {
     this.stop();
-    this.cluster.clear();
+    this.cluster.setReadOnly(false);
+    this.cluster.clear({ force: true });
     this.simulation.reset();
     this.eventBus.clearHistory();
 

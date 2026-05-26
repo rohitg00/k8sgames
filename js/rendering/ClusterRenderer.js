@@ -6,8 +6,8 @@ import { ParticleTrafficSystem } from './ParticleTraffic.js';
 
 const BACKGROUND_COLOR = 0x0d1117;
 const K8S_BLUE = 0x326CE5;
-const GRID_SIZE = 40;
-const GRID_DIVISIONS = 20;
+const GRID_SIZE = 120;
+const GRID_DIVISIONS = 40;
 const HIGHLIGHT_COLOR = 0x58a6ff;
 const SELECT_COLOR = 0xffa657;
 const NAMESPACE_OPACITY = 0.04;
@@ -57,7 +57,7 @@ export class ClusterRenderer {
 
     _initCamera() {
         const aspect = this.canvas.clientWidth / this.canvas.clientHeight;
-        this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 500);
+        this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 2000);
         this.camera.position.set(18, 14, 18);
         this.camera.lookAt(0, 0, 0);
     }
@@ -86,10 +86,10 @@ export class ClusterRenderer {
         this.controls.enablePan = true;
         this.controls.rotateSpeed = 0.8;
         this.controls.zoomSpeed = 1.2;
-        this.controls.panSpeed = 0.8;
+        this.controls.panSpeed = 1.4;
         this.controls.minDistance = 5;
-        this.controls.maxDistance = 80;
-        this.controls.maxPolarAngle = Math.PI / 2.1;
+        this.controls.maxDistance = 350;
+        this.controls.maxPolarAngle = Math.PI / 1.75;
         this.controls.minPolarAngle = 0.1;
         this.controls.target.set(0, 0, 0);
         this.controls.mouseButtons = {
@@ -290,7 +290,7 @@ export class ClusterRenderer {
             this.canvas.style.cursor = 'default';
             const group = this.resourceMeshes.get(rid);
             if (group && this.onResourceMoved) {
-                this.onResourceMoved(rid, { x: group.position.x, y: 0, z: group.position.z });
+                this.onResourceMoved(rid, { x: group.position.x, y: group.position.y, z: group.position.z });
             }
             this._didDrag = false;
             return;
@@ -432,6 +432,7 @@ export class ClusterRenderer {
 
         group.userData.resourceId = resource.id;
         group.userData.resourceType = resource.type;
+        group.userData.baseY = resource.y || 0;
         group.position.set(resource.x || 0, resource.y || 0, resource.z || 0);
 
         group.traverse((child) => {
@@ -484,7 +485,10 @@ export class ClusterRenderer {
         if (!group) return;
 
         if (resource.x !== undefined) group.position.x = resource.x;
-        if (resource.y !== undefined) group.position.y = resource.y;
+        if (resource.y !== undefined) {
+            group.position.y = resource.y;
+            group.userData.baseY = resource.y;
+        }
         if (resource.z !== undefined) group.position.z = resource.z;
 
         if (resource.status) {
@@ -495,12 +499,28 @@ export class ClusterRenderer {
     _rebuildPickableList() {
         this.pickableObjects = [];
         for (const group of this.resourceMeshes.values()) {
+            if (!group.visible) continue;
             group.traverse((child) => {
                 if (child.isMesh && !child.userData.isLabel) {
                     this.pickableObjects.push(child);
                 }
             });
         }
+    }
+
+    setVisibleResources(visibleIds) {
+        const allowed = visibleIds instanceof Set ? visibleIds : new Set(visibleIds || []);
+        for (const [uid, group] of this.resourceMeshes) {
+            group.visible = allowed.has(uid);
+        }
+        this._rebuildPickableList();
+    }
+
+    showAllResources() {
+        for (const group of this.resourceMeshes.values()) {
+            group.visible = true;
+        }
+        this._rebuildPickableList();
     }
 
     _ensureNamespacePlane(namespace) {
@@ -706,6 +726,7 @@ export class ClusterRenderer {
                 group.position.x = start.x + (target.x - start.x) * ease;
                 group.position.y = start.y + (target.y - start.y) * ease;
                 group.position.z = start.z + (target.z - start.z) * ease;
+                group.userData.baseY = group.position.y;
             }
 
             this.connectionLines.updatePositions(this.resourceMeshes);
@@ -719,9 +740,57 @@ export class ClusterRenderer {
     }
 
     resetCamera() {
-        this.camera.position.set(18, 14, 18);
-        this.controls.target.set(0, 0, 0);
-        this.controls.update();
+        this.frameAllResources();
+    }
+
+    getVisibleBounds() {
+        const box = new THREE.Box3();
+        let hasVisible = false;
+
+        for (const group of this.resourceMeshes.values()) {
+            if (!group.visible) continue;
+            box.expandByPoint(group.position);
+            hasVisible = true;
+        }
+
+        return hasVisible ? box : null;
+    }
+
+    frameAllResources(duration = 0) {
+        const box = this.getVisibleBounds();
+        if (!box) {
+            this.camera.position.set(18, 14, 18);
+            this.controls.target.set(0, 0, 0);
+            this.controls.update();
+            return;
+        }
+
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const radius = Math.max(size.x, size.y * 2.2, size.z, 10);
+        const distance = Math.min(Math.max(radius * 1.35, 24), this.controls.maxDistance * 0.9);
+        const targetPosition = center.clone().add(new THREE.Vector3(distance, distance * 0.65, distance));
+
+        if (duration <= 0) {
+            this.camera.position.copy(targetPosition);
+            this.controls.target.copy(center);
+            this.controls.update();
+            return;
+        }
+
+        const startTime = performance.now();
+        const startCamera = this.camera.position.clone();
+        const startTarget = this.controls.target.clone();
+        const animate = () => {
+            const elapsed = performance.now() - startTime;
+            const t = Math.min(elapsed / duration, 1);
+            const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+            this.camera.position.lerpVectors(startCamera, targetPosition, ease);
+            this.controls.target.lerpVectors(startTarget, center, ease);
+            this.controls.update();
+            if (t < 1) requestAnimationFrame(animate);
+        };
+        requestAnimationFrame(animate);
     }
 
     dispose() {

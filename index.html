@@ -87,6 +87,11 @@
         <div class="menu-btn-title">Sandbox</div>
         <div class="menu-btn-desc">Free cluster management. Design, build, get scored.</div>
       </button>
+      <button class="menu-btn" data-mode="mirror">
+        <span class="menu-btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4v6h6"/><path d="M20 20v-6h-6"/><path d="M20 9A8 8 0 0 0 6.3 5.7L4 8"/><path d="M4 15a8 8 0 0 0 13.7 3.3L20 16"/></svg></span>
+        <div class="menu-btn-title">Mirror Cluster</div>
+        <div class="menu-btn-desc">Import a real snapshot as a read-only 3D cluster.</div>
+      </button>
       <button class="menu-btn" data-mode="challenge">
         <span class="menu-btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
         <div class="menu-btn-title">Challenges</div>
@@ -151,6 +156,10 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
         Auto-Align
       </button>
+      <button id="btn-filter-resources" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/80 hover:text-white bg-white/5 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-400/40 rounded-lg transition-all" title="Filter rendered resources">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h18M7 12h10M10 19h4"/></svg>
+        Objects
+      </button>
       <button id="btn-reset-camera" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all" title="Reset camera to default view">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
         Reset View
@@ -159,6 +168,14 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
         YAML
       </button>
+      <button id="btn-mirror-cluster" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/80 hover:text-white bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/40 rounded-lg transition-all" title="Import Kubernetes JSON snapshot">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M20 9A8 8 0 006.3 5.7L4 8M4 15a8 8 0 0013.7 3.3L20 16"/></svg>
+        Mirror
+      </button>
+      <div id="mirror-readonly-badge" class="hidden items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-amber-200/90 bg-amber-400/10 border border-amber-300/20 rounded-lg">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-300"></span>
+        Read-only
+      </div>
       <div class="w-px h-5 bg-white/10"></div>
       <div class="flex items-center gap-1.5 px-2 py-1 text-[11px] text-white/30">
         <kbd class="px-1.5 py-0.5 bg-white/8 border border-white/10 rounded text-white/50 font-mono text-[10px]">/</kbd>
@@ -169,6 +186,27 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01"/><circle cx="12" cy="12" r="10" stroke-width="2"/></svg>
         Help
       </button>
+    </div>
+    <div id="render-filter-panel" class="fixed top-14 right-4 z-40 hidden w-80 max-h-[calc(100vh-7rem)] overflow-hidden rounded-xl backdrop-blur-xl bg-black/70 border border-white/10 shadow-2xl">
+      <div class="flex items-center justify-between px-3 py-2 border-b border-white/10">
+        <div class="text-xs font-semibold text-white/80">Rendered Objects</div>
+        <div id="filter-count" class="text-[11px] text-white/35 font-mono">0 / 0</div>
+      </div>
+      <div class="p-3 space-y-3">
+        <input id="filter-search" type="text" class="w-full px-3 py-2 text-xs text-white bg-black/40 border border-white/15 rounded-lg outline-none focus:border-emerald-500/50 font-mono" placeholder="filter by name..." spellcheck="false" />
+        <div class="grid grid-cols-2 gap-2">
+          <select id="filter-namespace" class="px-2 py-1.5 text-xs text-white bg-black/40 border border-white/15 rounded-lg outline-none focus:border-emerald-500/50"></select>
+          <select id="filter-status" class="px-2 py-1.5 text-xs text-white bg-black/40 border border-white/15 rounded-lg outline-none focus:border-emerald-500/50">
+            <option value="">All statuses</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="filter-all" class="px-2.5 py-1.5 text-[11px] font-medium text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg">All</button>
+          <button id="filter-none" class="px-2.5 py-1.5 text-[11px] font-medium text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg">None</button>
+          <button id="filter-fit" class="ml-auto px-2.5 py-1.5 text-[11px] font-medium text-emerald-300/80 hover:text-emerald-200 bg-emerald-400/10 hover:bg-emerald-400/15 border border-emerald-400/20 rounded-lg">Fit view</button>
+        </div>
+        <div id="filter-kinds" class="grid grid-cols-2 gap-1.5 max-h-64 overflow-y-auto pr-1"></div>
+      </div>
     </div>
     <div id="resource-palette" class="glass-dark">
       <div class="palette-section-label">Workloads</div>
@@ -495,6 +533,13 @@
         this.dragGhost = null;
         this.resourceCounter = {};
         this.placedPositions = new Map();
+        this.renderFilters = {
+          search: '',
+          namespace: '',
+          status: '',
+          kinds: new Map(),
+        };
+        this._filterRefreshTimer = null;
         this.settings = this.loadSettings();
       }
 
@@ -525,6 +570,7 @@
         this.bindGameEvents();
         this.bindKeyboard();
         this.bindPalette();
+        this.bindRenderFilters();
         this.buildLevelSelect();
         this.buildChallengeSelect();
         this.buildAchievements();
@@ -567,6 +613,7 @@
             if (!this.renderer.resourceMeshes.has(uid)) {
               const pos = this.placedPositions.get(uid) || this.getPlacementPosition();
               this.renderer.addResource(toRenderable(data.resource, pos.x, pos.y, pos.z));
+              this.scheduleRenderFilterRefresh();
             }
           }
         });
@@ -576,6 +623,18 @@
           if (uid) {
             this.renderer.removeResource(uid);
             this.placedPositions.delete(uid);
+            this.scheduleRenderFilterRefresh();
+          }
+        });
+
+        this.engine.eventBus.on('cluster:readonly-changed', (data) => {
+          this._setReadOnlyUI(data.readOnly);
+        });
+
+        this.engine.eventBus.on('cluster:imported', (data) => {
+          this.scheduleRenderFilterRefresh();
+          if (data.count > 0) {
+            setTimeout(() => this.autoAlignResources(), 50);
           }
         });
 
@@ -784,6 +843,10 @@
             case 'Delete':
             case 'Backspace':
               if (this.renderer && this.renderer.selectedResource) {
+                if (this._isClusterReadOnly()) {
+                  this._notifyReadOnly('delete');
+                  return;
+                }
                 const uid = this.renderer.selectedResource;
                 this.engine.cluster.remove(uid);
               }
@@ -827,6 +890,10 @@
       }
 
       selectPaletteResource(kind) {
+        if (this._isClusterReadOnly()) {
+          this._notifyReadOnly('select-palette');
+          return;
+        }
         document.querySelectorAll('.palette-item').forEach(item => {
           item.classList.toggle('selected', item.dataset.resource === kind);
         });
@@ -838,6 +905,11 @@
         if (!palette) return;
 
         palette.addEventListener('dragstart', (e) => {
+          if (this._isClusterReadOnly()) {
+            e.preventDefault();
+            this._notifyReadOnly('drag-create');
+            return;
+          }
           const item = e.target.closest('.palette-item');
           if (!item) return;
           this.dragResource = item.dataset.resource;
@@ -862,6 +934,10 @@
         palette.addEventListener('click', (e) => {
           const item = e.target.closest('.palette-item');
           if (!item) return;
+          if (this._isClusterReadOnly()) {
+            this._notifyReadOnly('palette-create');
+            return;
+          }
           const kind = item.dataset.resource;
           const rect = canvas.getBoundingClientRect();
           const cx = rect.left + rect.width / 2;
@@ -871,12 +947,17 @@
 
         const canvas = document.getElementById('game-canvas');
         canvas.addEventListener('dragover', (e) => {
+          if (this._isClusterReadOnly()) return;
           e.preventDefault();
           e.dataTransfer.dropEffect = 'copy';
         });
 
         canvas.addEventListener('drop', (e) => {
           e.preventDefault();
+          if (this._isClusterReadOnly()) {
+            this._notifyReadOnly('drop-create');
+            return;
+          }
           const kind = e.dataTransfer.getData('text/plain');
           if (kind && RESOURCE_CLASSES[kind]) {
             this.placeResource(kind, e.clientX, e.clientY);
@@ -903,8 +984,12 @@
           this.autoAlignResources();
         });
 
+        document.getElementById('btn-filter-resources')?.addEventListener('click', () => {
+          this.toggleRenderFilterPanel();
+        });
+
         document.getElementById('btn-reset-camera')?.addEventListener('click', () => {
-          if (this.renderer) this.renderer.resetCamera();
+          if (this.renderer) this.renderer.frameAllResources(500);
         });
 
         document.getElementById('btn-help')?.addEventListener('click', () => {
@@ -927,9 +1012,17 @@
             URL.revokeObjectURL(url);
           }
         });
+
+        document.getElementById('btn-mirror-cluster')?.addEventListener('click', () => {
+          this.showMirrorDialog();
+        });
       }
 
       placeResource(kind, screenX, screenY) {
+        if (this._isClusterReadOnly()) {
+          this._notifyReadOnly('create');
+          return;
+        }
         const ResourceClass = RESOURCE_CLASSES[kind];
         if (!ResourceClass) return;
 
@@ -976,7 +1069,216 @@
         });
       }
 
+      _isClusterReadOnly() {
+        return this.engine?.cluster?.isReadOnly?.() || false;
+      }
+
+      _notifyReadOnly(action) {
+        this.engine?.eventBus?.emit('cluster:write-blocked', {
+          action,
+          reason: this.engine.cluster.readOnlyReason || 'Mirrored cluster is read-only',
+        });
+      }
+
+      _setReadOnlyUI(readOnly) {
+        document.getElementById('game-container')?.classList.toggle('mirror-readonly', readOnly);
+        const badge = document.getElementById('mirror-readonly-badge');
+        if (badge) {
+          badge.classList.toggle('hidden', !readOnly);
+          badge.classList.toggle('flex', readOnly);
+        }
+        document.querySelectorAll('.palette-item').forEach((item) => {
+          item.draggable = !readOnly;
+          item.setAttribute('aria-disabled', readOnly ? 'true' : 'false');
+          item.classList.toggle('disabled', readOnly);
+        });
+      }
+
+      bindRenderFilters() {
+        const panel = document.getElementById('render-filter-panel');
+        if (!panel) return;
+
+        const search = document.getElementById('filter-search');
+        const namespace = document.getElementById('filter-namespace');
+        const status = document.getElementById('filter-status');
+
+        search?.addEventListener('input', () => {
+          this.renderFilters.search = search.value.trim().toLowerCase();
+          this.applyRenderFilters();
+        });
+        namespace?.addEventListener('change', () => {
+          this.renderFilters.namespace = namespace.value;
+          this.applyRenderFilters();
+        });
+        status?.addEventListener('change', () => {
+          this.renderFilters.status = status.value;
+          this.applyRenderFilters();
+        });
+
+        document.getElementById('filter-all')?.addEventListener('click', () => {
+          for (const kind of this.engine.cluster.getAllKinds()) {
+            this.renderFilters.kinds.set(kind, true);
+          }
+          this.refreshRenderFilterOptions();
+          this.applyRenderFilters();
+        });
+        document.getElementById('filter-none')?.addEventListener('click', () => {
+          for (const kind of this.engine.cluster.getAllKinds()) {
+            this.renderFilters.kinds.set(kind, false);
+          }
+          this.refreshRenderFilterOptions();
+          this.applyRenderFilters();
+        });
+        document.getElementById('filter-fit')?.addEventListener('click', () => {
+          this.renderer?.frameAllResources(500);
+        });
+      }
+
+      toggleRenderFilterPanel() {
+        const panel = document.getElementById('render-filter-panel');
+        if (!panel) return;
+        panel.classList.toggle('hidden');
+        this.refreshRenderFilterOptions();
+        this.applyRenderFilters();
+      }
+
+      scheduleRenderFilterRefresh() {
+        if (this._filterRefreshTimer) {
+          clearTimeout(this._filterRefreshTimer);
+        }
+        this._filterRefreshTimer = setTimeout(() => {
+          this._filterRefreshTimer = null;
+          this.refreshRenderFilterOptions();
+          this.applyRenderFilters();
+        }, 80);
+      }
+
+      refreshRenderFilterOptions() {
+        const cluster = this.engine?.cluster;
+        if (!cluster) return;
+
+        const resources = cluster.getAllResources();
+        const namespaces = [...new Set(resources.map(r => r.metadata?.namespace || '').filter(Boolean))].sort();
+        const statuses = [...new Set(resources.map(r => this._resourceStatus(r)).filter(Boolean))].sort();
+        const kinds = [...new Set(resources.map(r => r.kind))].sort();
+
+        const namespaceSelect = document.getElementById('filter-namespace');
+        if (namespaceSelect) {
+          const current = this.renderFilters.namespace;
+          namespaceSelect.innerHTML = `<option value="">All namespaces</option>${namespaces.map(ns => `<option value="${this._escapeHTML(ns)}">${this._escapeHTML(ns)}</option>`).join('')}`;
+          namespaceSelect.value = namespaces.includes(current) ? current : '';
+          this.renderFilters.namespace = namespaceSelect.value;
+        }
+
+        const statusSelect = document.getElementById('filter-status');
+        if (statusSelect) {
+          const current = this.renderFilters.status;
+          statusSelect.innerHTML = `<option value="">All statuses</option>${statuses.map(st => `<option value="${this._escapeHTML(st)}">${this._escapeHTML(st)}</option>`).join('')}`;
+          statusSelect.value = statuses.includes(current) ? current : '';
+          this.renderFilters.status = statusSelect.value;
+        }
+
+        for (const kind of kinds) {
+          if (!this.renderFilters.kinds.has(kind)) {
+            this.renderFilters.kinds.set(kind, true);
+          }
+        }
+
+        const kindsEl = document.getElementById('filter-kinds');
+        if (kindsEl) {
+          kindsEl.innerHTML = kinds.map(kind => {
+            const count = resources.filter(r => r.kind === kind).length;
+            const checked = this.renderFilters.kinds.get(kind) !== false ? 'checked' : '';
+            return `
+              <label class="flex items-center gap-2 px-2 py-1.5 text-[11px] text-white/65 hover:text-white bg-white/5 hover:bg-white/8 border border-white/8 rounded-lg cursor-pointer min-w-0">
+                <input type="checkbox" class="filter-kind-checkbox accent-emerald-500" data-kind="${this._escapeHTML(kind)}" ${checked} />
+                <span class="truncate">${this._escapeHTML(kind)}</span>
+                <span class="ml-auto text-white/30 font-mono">${count}</span>
+              </label>`;
+          }).join('');
+          kindsEl.querySelectorAll('.filter-kind-checkbox').forEach((input) => {
+            input.addEventListener('change', () => {
+              this.renderFilters.kinds.set(input.dataset.kind, input.checked);
+              this.applyRenderFilters();
+            });
+          });
+        }
+      }
+
+      applyRenderFilters() {
+        const cluster = this.engine?.cluster;
+        if (!cluster || !this.renderer) return;
+
+        const visible = new Set();
+        const all = cluster.getAllResources();
+        for (const resource of all) {
+          if (!this._resourceMatchesFilters(resource)) continue;
+          visible.add(resource.uid || resource.metadata?.uid);
+        }
+
+        this.renderer.setVisibleResources(visible);
+        const count = document.getElementById('filter-count');
+        if (count) count.textContent = `${visible.size} / ${all.length}`;
+
+        if (this.renderer.selectedResource && !visible.has(this.renderer.selectedResource)) {
+          this.renderer._setSelected?.(null);
+        }
+        this.syncRenderState();
+        this._updateNamespacePlanes();
+      }
+
+      _resourceMatchesFilters(resource) {
+        const filters = this.renderFilters;
+        const name = (resource.metadata?.name || resource.name || '').toLowerCase();
+        const namespace = resource.metadata?.namespace || '';
+        const status = this._resourceStatus(resource);
+
+        if (filters.search && !name.includes(filters.search)) return false;
+        if (filters.namespace && namespace !== filters.namespace) return false;
+        if (filters.status && status !== filters.status) return false;
+        if (filters.kinds.get(resource.kind) === false) return false;
+
+        return true;
+      }
+
+      _resourceStatus(resource) {
+        return resource.status?.phase || resource.phase || 'Unknown';
+      }
+
+      _updateNamespacePlanes() {
+        if (!this.renderer) return;
+        const boundsByNamespace = new Map();
+        for (const resource of this.engine.cluster.getAllResources()) {
+          const ns = resource.metadata?.namespace || '';
+          if (!ns) continue;
+          const uid = resource.uid || resource.metadata?.uid;
+          const mesh = this.renderer.resourceMeshes.get(uid);
+          if (!mesh || !mesh.visible) continue;
+          const current = boundsByNamespace.get(ns) || {
+            minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity,
+          };
+          current.minX = Math.min(current.minX, mesh.position.x);
+          current.maxX = Math.max(current.maxX, mesh.position.x);
+          current.minZ = Math.min(current.minZ, mesh.position.z);
+          current.maxZ = Math.max(current.maxZ, mesh.position.z);
+          boundsByNamespace.set(ns, current);
+        }
+
+        for (const [ns, entry] of this.renderer.namespacePlanes) {
+          const bounds = boundsByNamespace.get(ns);
+          entry.mesh.visible = Boolean(bounds);
+          if (bounds) this.renderer.updateNamespaceBounds(ns, bounds);
+        }
+      }
+
+      _escapeHTML(str) {
+        const div = document.createElement('div');
+        div.textContent = String(str ?? '');
+        return div.innerHTML;
+      }
+
       _showIngressPathPicker(ingress) {
+        if (this._isClusterReadOnly()) return;
         const services = this.engine.cluster.getByKind('Service');
         if (services.length === 0) return;
 
@@ -1060,6 +1362,7 @@
       }
 
       _showSelectorPicker(service) {
+        if (this._isClusterReadOnly()) return;
         const deployments = this.engine.cluster.getByKind('Deployment');
         const statefulsets = this.engine.cluster.getByKind('StatefulSet');
         const targets = [...deployments, ...statefulsets];
@@ -1188,6 +1491,10 @@
       }
 
       _showEditDialog(uid) {
+        if (this._isClusterReadOnly()) {
+          this._notifyReadOnly('edit');
+          return;
+        }
         const resource = this.engine.cluster.getResource(uid);
         if (!resource) return;
 
@@ -1310,6 +1617,10 @@
       }
 
       _showScaleDialog(data) {
+        if (this._isClusterReadOnly()) {
+          this._notifyReadOnly('scale');
+          return;
+        }
         const resource = this.engine.cluster.getResource(data.uid);
         if (!resource) return;
         const current = resource.spec?.replicas ?? 1;
@@ -1365,47 +1676,57 @@
         const allResources = cluster.getAllResources();
         if (allResources.length === 0) return;
 
-        const tiers = {
-          namespace:  { kinds: ['Namespace'], z: -10, spacing: 5 },
-          node:       { kinds: ['Node'], z: -5, spacing: 6 },
-          workload:   { kinds: ['Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet'], z: 0, spacing: 4 },
-          batch:      { kinds: ['Job', 'CronJob'], z: 3, spacing: 3.5 },
-          pod:        { kinds: ['Pod'], z: 6, spacing: 2.5 },
-          network:    { kinds: ['Service', 'Ingress', 'NetworkPolicy'], z: 10, spacing: 4 },
-          config:     { kinds: ['ConfigMap', 'Secret'], z: 14, spacing: 3.5 },
-          storage:    { kinds: ['PersistentVolumeClaim', 'PersistentVolume', 'StorageClass'], z: 17, spacing: 4 },
-          scaling:    { kinds: ['HorizontalPodAutoscaler', 'ResourceQuota', 'LimitRange', 'PodDisruptionBudget'], z: 20, spacing: 3.5 },
-          rbac:       { kinds: ['ServiceAccount', 'Role', 'ClusterRole', 'RoleBinding', 'ClusterRoleBinding'], z: 23, spacing: 3 },
-        };
+        const layerDefs = [
+          { name: 'cluster', kinds: ['Namespace', 'Node', 'PersistentVolume', 'StorageClass'], y: 0, z: -10, spacing: 4.5 },
+          { name: 'controllers', kinds: ['Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Job', 'CronJob'], y: 4.5, z: -2, spacing: 3.4 },
+          { name: 'pods', kinds: ['Pod'], y: 9, z: 6, spacing: 2.2 },
+          { name: 'traffic', kinds: ['Service', 'Ingress', 'NetworkPolicy'], y: 13.5, z: 13, spacing: 3.2 },
+          { name: 'support', kinds: ['ConfigMap', 'Secret', 'PersistentVolumeClaim', 'HorizontalPodAutoscaler', 'ResourceQuota', 'LimitRange', 'PodDisruptionBudget', 'ServiceAccount', 'Role', 'ClusterRole', 'RoleBinding', 'ClusterRoleBinding'], y: 18, z: 20, spacing: 2.8 },
+        ];
 
         const targets = new Map();
+        const namespaces = [...new Set(allResources.map(r => r.metadata?.namespace || '').filter(Boolean))].sort();
+        const namespaceOrder = new Map(namespaces.map((ns, index) => [ns, index]));
+        const namespaceSpacing = 18;
+        const centerOffset = (Math.max(namespaces.length, 1) - 1) * namespaceSpacing / 2;
 
-        for (const [, tier] of Object.entries(tiers)) {
-          const resources = allResources.filter(r => tier.kinds.includes(r.kind));
-          if (resources.length === 0) continue;
-
-          const totalWidth = (resources.length - 1) * tier.spacing;
-          const startX = -totalWidth / 2;
-
-          resources.forEach((r, i) => {
-            const uid = r.uid || r.metadata?.uid;
-            targets.set(uid, {
-              x: startX + i * tier.spacing,
-              y: 0,
-              z: tier.z,
+        const placeGrid = (resources, baseX, baseY, baseZ, spacing) => {
+          const cols = Math.max(1, Math.ceil(Math.sqrt(resources.length)));
+          const rows = Math.ceil(resources.length / cols);
+          const width = (cols - 1) * spacing;
+          const depth = (rows - 1) * spacing;
+          resources.forEach((resource, index) => {
+            const col = index % cols;
+            const row = Math.floor(index / cols);
+            targets.set(resource.uid || resource.metadata?.uid, {
+              x: baseX + col * spacing - width / 2,
+              y: baseY,
+              z: baseZ + row * spacing - depth / 2,
             });
           });
+        };
+
+        for (const layer of layerDefs) {
+          for (const ns of namespaces) {
+            const resources = allResources
+              .filter(r => layer.kinds.includes(r.kind))
+              .filter(r => (r.metadata?.namespace || '') === ns);
+            if (resources.length === 0) continue;
+            const baseX = (namespaceOrder.get(ns) * namespaceSpacing) - centerOffset;
+            placeGrid(resources, baseX, layer.y, layer.z, layer.spacing);
+          }
+
+          const clusterScoped = allResources
+            .filter(r => layer.kinds.includes(r.kind))
+            .filter(r => !(r.metadata?.namespace || ''));
+          if (clusterScoped.length > 0) {
+            placeGrid(clusterScoped, -centerOffset - namespaceSpacing, layer.y, layer.z, layer.spacing);
+          }
         }
 
-        const unmatched = allResources.filter(r => {
-          const uid = r.uid || r.metadata?.uid;
-          return !targets.has(uid);
-        });
+        const unmatched = allResources.filter(r => !targets.has(r.uid || r.metadata?.uid));
         if (unmatched.length > 0) {
-          const startX = -(unmatched.length - 1) * 3 / 2;
-          unmatched.forEach((r, i) => {
-            targets.set(r.uid || r.metadata?.uid, { x: startX + i * 3, y: 0, z: 26 });
-          });
+          placeGrid(unmatched, centerOffset + namespaceSpacing, 21.5, 26, 3);
         }
 
         this.renderer.animateToPositions(targets, 800);
@@ -1415,8 +1736,9 @@
         }
 
         setTimeout(() => {
-          this.renderer.resetCamera();
-        }, 200);
+          this.renderer.frameAllResources(600);
+          this._updateNamespacePlanes();
+        }, 850);
       }
 
       startMode(mode) {
@@ -1489,12 +1811,164 @@
               this.modeInstance = new ChallengeMode(this.engine, this.incidentEngine, this.scoringEngine);
               this.modeInstance.startChallenge(levelOrChallenge || 1);
               break;
+            case 'mirror':
+              this.modeInstance = null;
+              this.showMirrorDialog();
+              break;
           }
         } catch (err) {
           console.error(`Failed to start ${mode} mode:`, err);
         }
 
         this._initObjectivesPanel(mode);
+      }
+
+      showMirrorDialog() {
+        const existing = document.getElementById('mirror-dialog-overlay');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'mirror-dialog-overlay';
+        overlay.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm';
+        overlay.innerHTML = `
+          <div class="w-[min(720px,92vw)] rounded-xl bg-gray-900/95 border border-white/10 shadow-2xl p-4 max-h-[88vh] overflow-y-auto">
+            <div class="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <div class="text-sm text-white/85 font-semibold">Mirror Kubernetes Cluster</div>
+                <div class="text-[11px] text-white/35 mt-0.5">Paste or load a kubectl JSON snapshot. Imported resources become read-only.</div>
+              </div>
+              <button id="mirror-dialog-close" class="text-white/30 hover:text-white/60 text-lg">&times;</button>
+            </div>
+            <div class="rounded-lg bg-black/35 border border-white/10 p-3 mb-3">
+              <div class="text-[10px] text-white/40 uppercase tracking-wider mb-1">Snapshot command</div>
+              <pre class="text-[11px] text-cyan-200/80 whitespace-pre-wrap select-text font-mono leading-5">kubectl get nodes,namespaces,pods,deployments,replicasets,statefulsets,daemonsets,jobs,cronjobs,services,ingress,networkpolicies,configmaps,secrets,pv,pvc,storageclasses,hpa,roles,clusterroles,rolebindings,clusterrolebindings,serviceaccounts,pdb,resourcequotas -A -o json</pre>
+            </div>
+            <textarea id="mirror-json-input" rows="12" class="w-full px-3 py-2 text-xs text-white bg-black/40 border border-white/15 rounded-lg outline-none focus:border-cyan-500/50 font-mono resize-y" placeholder='{"apiVersion":"v1","kind":"List","items":[...]}' spellcheck="false"></textarea>
+            <div id="mirror-error" class="hidden mt-2 text-xs text-red-300/90"></div>
+            <div class="flex flex-wrap items-center gap-2 mt-3">
+              <label class="px-3 py-1.5 text-xs font-medium text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all cursor-pointer">
+                Load JSON file
+                <input id="mirror-file-input" type="file" accept=".json,application/json" class="hidden" />
+              </label>
+              <button id="mirror-import-ok" class="px-3 py-1.5 text-xs font-medium text-white bg-cyan-600 hover:bg-cyan-500 rounded-lg transition-colors">Import read-only</button>
+              <button id="mirror-import-cancel" class="px-3 py-1.5 text-xs font-medium text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors">Cancel</button>
+              <div id="mirror-current-status" class="ml-auto text-[11px] text-white/35"></div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+
+        const close = () => overlay.remove();
+        const input = document.getElementById('mirror-json-input');
+        const error = document.getElementById('mirror-error');
+        const status = document.getElementById('mirror-current-status');
+        const updateStatus = () => {
+          const count = this.engine.cluster.mirrorInfo?.resourceCount;
+          status.textContent = count ? `${count} mirrored resources` : '';
+        };
+        updateStatus();
+
+        const showError = (message) => {
+          error.textContent = message;
+          error.classList.remove('hidden');
+        };
+
+        document.getElementById('mirror-dialog-close').addEventListener('click', close);
+        document.getElementById('mirror-import-cancel').addEventListener('click', close);
+        document.getElementById('mirror-file-input').addEventListener('change', async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          input.value = await this._readSnapshotFile(file);
+        });
+        document.getElementById('mirror-import-ok').addEventListener('click', () => {
+          try {
+            const imported = this.importMirrorSnapshot(input.value.trim(), 'kubectl JSON snapshot');
+            if (imported.length === 0) {
+              showError('No Kubernetes resources found in this JSON.');
+              return;
+            }
+            close();
+          } catch (err) {
+            showError(err.message || 'Could not import this JSON snapshot.');
+          }
+        });
+
+        requestAnimationFrame(() => input.focus());
+      }
+
+      importMirrorSnapshot(raw, source) {
+        if (!raw) throw new Error('Paste JSON from kubectl first.');
+        raw = this._normalizeSnapshotText(raw);
+        let parsed;
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          throw new Error('This mirror importer accepts kubectl JSON. Run kubectl with -o json and paste the output here.');
+        }
+
+        const items = this._extractKubernetesItems(parsed);
+        if (items.length === 0) {
+          throw new Error('No Kubernetes resources found in this JSON.');
+        }
+        const imported = this.engine.cluster.importSnapshot(items, {
+          readOnly: true,
+          source,
+          reason: 'Mirrored cluster is read-only',
+        });
+        this._setReadOnlyUI(true);
+        return imported;
+      }
+
+      async _readSnapshotFile(file) {
+        const buffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        if (bytes.length >= 2) {
+          if (bytes[0] === 0xff && bytes[1] === 0xfe) {
+            return new TextDecoder('utf-16le').decode(bytes);
+          }
+          if (bytes[0] === 0xfe && bytes[1] === 0xff) {
+            return new TextDecoder('utf-16be').decode(bytes);
+          }
+        }
+
+        const sample = bytes.slice(0, Math.min(bytes.length, 200));
+        let zeroOdd = 0;
+        let zeroEven = 0;
+        for (let i = 0; i < sample.length; i++) {
+          if (sample[i] !== 0) continue;
+          if (i % 2 === 0) zeroEven++;
+          else zeroOdd++;
+        }
+
+        if (zeroOdd > sample.length * 0.2) {
+          return new TextDecoder('utf-16le').decode(bytes);
+        }
+        if (zeroEven > sample.length * 0.2) {
+          return new TextDecoder('utf-16be').decode(bytes);
+        }
+
+        return new TextDecoder('utf-8').decode(bytes);
+      }
+
+      _normalizeSnapshotText(raw) {
+        return String(raw || '')
+          .replace(/^\uFEFF/, '')
+          .replace(/\u0000/g, '')
+          .trim();
+      }
+
+      _extractKubernetesItems(parsed) {
+        if (Array.isArray(parsed)) {
+          return parsed.flatMap((item) => this._extractKubernetesItems(item));
+        }
+        if (!parsed || typeof parsed !== 'object') return [];
+        if (Array.isArray(parsed.items)) {
+          return parsed.items.flatMap((item) => this._extractKubernetesItems(item));
+        }
+        if (parsed.kind && parsed.metadata?.name) {
+          return [parsed];
+        }
+        return [];
       }
 
       _getLevelDef() {
@@ -1618,6 +2092,10 @@
           clearInterval(this._objUpdateInterval);
           this._objUpdateInterval = null;
         }
+        if (this._filterRefreshTimer) {
+          clearTimeout(this._filterRefreshTimer);
+          this._filterRefreshTimer = null;
+        }
         const panel = document.getElementById('objectives-panel');
         if (panel) panel.style.display = 'none';
         this.engine.stop();
@@ -1629,9 +2107,11 @@
         }
         this.modeInstance = null;
         this.currentMode = null;
+        this._setReadOnlyUI(false);
 
         document.getElementById('game-container').classList.remove('active');
         document.getElementById('main-menu').classList.remove('hidden');
+        document.getElementById('render-filter-panel')?.classList.add('hidden');
 
         document.querySelectorAll('#hud, #command-bar, #inspector-panel, #context-menu-container, #metrics-dashboard, #incident-panel, #minimap-container').forEach(el => el?.remove());
 
@@ -1651,12 +2131,14 @@
         }
 
         const connections = new Map();
+        const isVisible = (uid) => this.renderer.resourceMeshes.get(uid)?.visible !== false;
 
         for (const [parentUid, childUids] of cluster.relationships) {
           if (!cluster.resources.has(parentUid)) continue;
           for (const childUid of childUids) {
             if (!cluster.resources.has(childUid)) continue;
             if (!this.renderer.resourceMeshes.has(parentUid) || !this.renderer.resourceMeshes.has(childUid)) continue;
+            if (!isVisible(parentUid) || !isVisible(childUid)) continue;
             const id = `own:${parentUid}:${childUid}`;
             connections.set(id, { id, sourceId: parentUid, targetId: childUid, type: 'ownership', trafficVolume: 1 });
           }
@@ -1666,11 +2148,13 @@
         for (const svc of services) {
           if (!svc.spec?.selector || Object.keys(svc.spec.selector).length === 0) continue;
           if (!this.renderer.resourceMeshes.has(svc.uid)) continue;
+          if (!isVisible(svc.uid)) continue;
           const matchingPods = cluster.selectByLabels('Pod', svc.spec.selector)
             .filter(p => p.metadata.namespace === svc.metadata.namespace);
 
           for (const pod of matchingPods) {
             if (!this.renderer.resourceMeshes.has(pod.uid)) continue;
+            if (!isVisible(pod.uid)) continue;
             const id = `net:${svc.uid}:${pod.uid}`;
             connections.set(id, { id, sourceId: svc.uid, targetId: pod.uid, type: 'network', trafficVolume: 2 });
           }
@@ -1681,6 +2165,7 @@
           });
           for (const dep of matchingDeploys) {
             if (!this.renderer.resourceMeshes.has(dep.uid)) continue;
+            if (!isVisible(dep.uid)) continue;
             const id = `net:${svc.uid}:${dep.uid}`;
             if (!connections.has(id)) {
               connections.set(id, { id, sourceId: svc.uid, targetId: dep.uid, type: 'network', trafficVolume: 3 });
@@ -1709,13 +2194,14 @@
         const existing = document.getElementById('tutorial-overlay');
         if (existing) existing.remove();
 
-        const modeNames = { sandbox: 'Sandbox Mode', chaos: 'Chaos Mode', campaign: 'Campaign', challenge: 'Challenge' };
+        const modeNames = { sandbox: 'Sandbox Mode', chaos: 'Chaos Mode', campaign: 'Campaign', challenge: 'Challenge', mirror: 'Mirror Cluster' };
 
         const modeGoals = {
             sandbox: 'Build any cluster you want. The Architecture Advisor scores your design 0-100 across HA, security, scalability, and cost.',
             chaos: 'Survive as long as possible. Incidents escalate over time. If cluster health hits zero, game over. Fix issues fast for combo XP.',
             campaign: 'Complete objectives to pass each level. Faster completion with fewer resources earns more stars (3 max).',
             challenge: 'Beat the clock. Deploy and configure the required resources before time runs out.',
+            mirror: 'Import a Kubernetes JSON snapshot and explore it as a read-only 3D cluster.',
         };
 
         const controls = [
@@ -1761,6 +2247,12 @@
                 '<b>Name suggestions</b> appear as blue buttons when creating — click them to auto-fill the required name',
                 '<b>Click the lightbulb</b> (Show Hint) on the objectives panel for step-by-step guidance',
                 'Right-click any resource for actions: scale, delete, logs, restart',
+            ],
+            mirror: [
+                'Import kubectl JSON from a real cluster',
+                'Inspect resources, relationships, YAML, metrics, and topology',
+                'Create, edit, delete, scale, drain, and rollout commands are blocked',
+                'Use the Mirror button to replace the snapshot with a fresh one',
             ],
         };
 
