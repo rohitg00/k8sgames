@@ -271,7 +271,7 @@ const CAMPAIGN_LEVELS = [
     incidents: [],
     hints: [
       'Create an Ingress with spec.rules containing paths /api (backend: api-svc:3000) and /web (backend: web-svc:80). This is path-based routing via the Ingress Controller.',
-      'For TLS, first create a Secret of type kubernetes.io/tls, then reference it in the Ingress spec.tls section with the matching host.',
+      'For TLS you need a kubernetes.io/tls Secret — an Opaque one will not be accepted. Run "kubectl create secret tls my-cert", then select it in the Ingress TLS dropdown to terminate HTTPS.',
       'Without an Ingress, every Service needs its own NodePort or LoadBalancer. Ingress consolidates all HTTP routing behind one IP.'
     ],
     starCriteria: { time: 360, efficiency: 0.7, noFailures: true },

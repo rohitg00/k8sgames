@@ -992,6 +992,16 @@
           return `<option value="${s.metadata.name}:${port}">${s.metadata.name} (port ${port})</option>`;
         }).join('');
 
+        const secrets = this.engine.cluster.getByKind('Secret');
+        // Only kubernetes.io/tls secrets can terminate TLS; list the rest as disabled so the reason is visible.
+        const secretOptions = secrets.map(s => {
+          const sType = s.type || s.spec?.type || 'Opaque';
+          const isTLS = sType === 'kubernetes.io/tls';
+          const label = isTLS ? `${s.metadata.name} (${sType})` : `${s.metadata.name} — needs kubernetes.io/tls`;
+          return `<option value="${s.metadata.name}" ${isTLS ? '' : 'disabled'}>${label}</option>`;
+        }).join('');
+        const hasTLSSecret = secrets.some(s => (s.type || s.spec?.type) === 'kubernetes.io/tls');
+
         overlay.innerHTML = `
           <div class="w-80 rounded-xl bg-gray-900/95 border border-white/10 shadow-2xl p-4">
             <div class="text-xs text-white/40 font-medium uppercase tracking-wider mb-1">Ingress Path Routing</div>
@@ -1009,11 +1019,16 @@
               </div>
             </div>
             <button id="ingress-add-path" class="mt-2 text-[10px] text-sky-400/60 hover:text-sky-400 transition-colors">+ Add path</button>
+            <div class="mt-3 pt-3 border-t border-white/10">
+              <div class="text-[10px] text-white/40 uppercase tracking-wider mb-1">TLS Secret (HTTPS)</div>
+              <select id="ingress-tls-secret" class="w-full px-2 py-1.5 text-xs text-white bg-black/40 border border-white/15 rounded font-mono outline-none focus:border-sky-500/50"><option value="">None (HTTP only)</option>${secretOptions}</select>
+              ${hasTLSSecret ? '' : '<div class="text-[10px] text-amber-400/60 mt-1">No TLS secret found. Run: <span class="font-mono">kubectl create secret tls my-cert</span></div>'}
+            </div>
             <div class="flex gap-2 mt-3">
-              <button id="ingress-path-ok" class="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-sky-600 hover:bg-sky-500 rounded-lg transition-colors">Apply Routes</button>
+              <button id="ingress-path-ok" class="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-sky-600 hover:bg-sky-500 rounded-lg transition-colors">Apply Config</button>
               <button id="ingress-path-skip" class="px-3 py-1.5 text-xs font-medium text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors">Skip</button>
             </div>
-            <div class="text-[10px] text-white/30 mt-2 text-center">Level 10: define /api and /web paths to pass the objective</div>
+            <div class="text-[10px] text-white/30 mt-2 text-center">Level 10: define /api and /web paths and attach a kubernetes.io/tls Secret to pass the objective</div>
           </div>
         `;
         document.body.appendChild(overlay);
@@ -1054,6 +1069,14 @@
               http: { paths }
             }];
             ingress.recordEvent('Normal', 'RulesConfigured', `${paths.length} path rules configured`);
+          }
+
+          // Empty selection = HTTP only; a chosen secret attaches spec.tls for TLS termination (HTTPS).
+          const secretName = document.getElementById('ingress-tls-secret')?.value?.trim();
+          if (secretName) {
+            const host = ingress.metadata.name + '.example.com';
+            ingress.spec.tls = [{ hosts: [host], secretName }];
+            ingress.recordEvent('Normal', 'TLSConfigured', `TLS enabled with secret ${secretName}`);
           }
           close();
         });

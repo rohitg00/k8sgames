@@ -617,7 +617,13 @@ export class CommandBar {
     const kind = KIND_ALIASES[args[0]?.toLowerCase()];
     if (!kind) return { error: true, message: `error: the server doesn't have a resource type "${args[0]}"` };
 
-    const name = args[1] || `${kind.toLowerCase()}-${Date.now().toString(36).slice(-4)}`;
+    // kubectl create secret <tls|generic|docker-registry> <name>: map the subcommand to a
+    // K8s Secret type and, when present, read the name from the arg after it.
+    const SECRET_SUBTYPES = { tls: 'kubernetes.io/tls', generic: 'Opaque', 'docker-registry': 'kubernetes.io/dockerconfigjson' };
+    const secretType = kind === 'Secret' ? SECRET_SUBTYPES[args[1]?.toLowerCase()] : undefined;
+    const nameArgIndex = secretType ? 2 : 1;
+
+    const name = args[nameArgIndex] || `${kind.toLowerCase()}-${Date.now().toString(36).slice(-4)}`;
     const ns = args.includes('--namespace') ? args[args.indexOf('--namespace') + 1] : 'default';
     const uid = `${kind.toLowerCase()}-${name}-${Date.now()}`;
 
@@ -643,6 +649,14 @@ export class CommandBar {
     };
 
     const def = defaults[kind] || { spec: {}, status: {} };
+    if (secretType) {
+      def.spec = { ...def.spec, type: secretType, data: { ...(def.spec.data || {}) } };
+      // A TLS Secret is only valid with a cert/key pair; stub them so it satisfies Ingress TLS.
+      if (secretType === 'kubernetes.io/tls') {
+        def.spec.data['tls.crt'] = btoa('-----BEGIN CERTIFICATE-----\nMIIBxTCCAW...\n-----END CERTIFICATE-----');
+        def.spec.data['tls.key'] = btoa('-----BEGIN PRIVATE KEY-----\nMIIEvgIBAD...\n-----END PRIVATE KEY-----');
+      }
+    }
     const added = cluster.addResource({
       kind,
       name,

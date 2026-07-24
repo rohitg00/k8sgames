@@ -306,7 +306,17 @@ class CampaignMode {
         }
         case 'tls': {
           const ingresses = state.getResourcesByKind('Ingress') || [];
-          const hasTLS = ingresses.some((i) => i.spec?.tls && i.spec.tls.length > 0);
+          const secrets = state.getResourcesByKind('Secret') || [];
+          // Pass only if an Ingress references a real kubernetes.io/tls Secret — not just any secret.
+          // (type lives on `.type` for class-built secrets, `.spec.type` for command-built ones.)
+          const tlsSecretNames = new Set(
+            secrets
+              .filter((s) => (s.type || s.spec?.type) === 'kubernetes.io/tls')
+              .map((s) => s.metadata?.name || s.name)
+          );
+          const hasTLS = ingresses.some((i) =>
+            (i.spec?.tls || []).some((t) => tlsSecretNames.has(t.secretName))
+          );
           obj.current = hasTLS ? 1 : 0;
           obj.completed = hasTLS;
           break;
