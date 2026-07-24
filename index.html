@@ -992,7 +992,9 @@
           return `<option value="${s.metadata.name}:${port}">${s.metadata.name} (port ${port})</option>`;
         }).join('');
 
-        const secrets = this.engine.cluster.getByKind('Secret');
+        // A Secret referenced by spec.tls must live in the Ingress's namespace, so scope the list to it.
+        const ingressNs = ingress.metadata?.namespace || 'default';
+        const secrets = this.engine.cluster.getByKindAndNamespace('Secret', ingressNs);
         // Only kubernetes.io/tls secrets can terminate TLS; list the rest as disabled so the reason is visible.
         const secretOptions = secrets.map(s => {
           const sType = s.type || s.spec?.type || 'Opaque';
