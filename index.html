@@ -1071,12 +1071,14 @@
             ingress.recordEvent('Normal', 'RulesConfigured', `${paths.length} path rules configured`);
           }
 
-          // Empty selection = HTTP only; a chosen secret attaches spec.tls for TLS termination (HTTPS).
+          // A chosen secret attaches spec.tls for TLS termination (HTTPS); "None" clears any existing TLS (HTTP only).
           const secretName = document.getElementById('ingress-tls-secret')?.value?.trim();
           if (secretName) {
             const host = ingress.metadata.name + '.example.com';
             ingress.spec.tls = [{ hosts: [host], secretName }];
             ingress.recordEvent('Normal', 'TLSConfigured', `TLS enabled with secret ${secretName}`);
+          } else {
+            ingress.spec.tls = [];
           }
           close();
         });
