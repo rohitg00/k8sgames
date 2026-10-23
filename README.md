@@ -21,6 +21,14 @@ python3 -m http.server 8080
 # Open http://localhost:8080
 ```
 
+### Host your own copy
+
+[![Deploy to Wasmer](https://img.shields.io/badge/Deploy%20to-Wasmer-171717?logo=wasmer&logoColor=white)](https://wasmer.io/apps/create?github=rohitg00%2Fk8sgames)
+
+Running K8s Games for a team, class or workshop, for example with your own campaign levels or a translation? Fork this repository, then import your fork on [Wasmer Edge](https://wasmer.io/) (replace `rohitg00%2Fk8sgames` in the link with your fork). Importing does not copy this repository into your account, and only a repository you own and connect redeploys on push.
+
+There is still no build step: the repository root is served as static files, the same files `python3 -m http.server` serves above. `vercel.json` is read only by Vercel, so its cache headers and its user-agent redirect of AI and SEO crawlers to `robots.txt` do not apply on other hosts (`robots.txt` itself is still served). Three.js, Tailwind and the fonts still load from their CDNs.
+
 ## How to Play
 
 1. Pick a game mode from the main menu
